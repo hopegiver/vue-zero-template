@@ -1,7 +1,7 @@
 /* base.css — Notion-inspired design tokens + Bootstrap overrides */
 
-/* ── Import Inter (NotionInter substitute) ── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* ── Import Noto Sans KR ── */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
 
 /* ── Design Tokens ── */
 :root {
@@ -83,7 +83,7 @@ html {
 
 /* Typography */
 body {
-  font-family: 'Inter', -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: 'Noto Sans KR', -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
   font-size: 1rem;
   font-weight: 400;
   line-height: 1.5;

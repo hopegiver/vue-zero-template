@@ -1,0 +1,17 @@
+{
+  "name": "vue-zero-template",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "scan": "node bin/scan.js",
+    "test": "npx playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "hono": "^4.12.23",
+    "wrangler": "^3.0.0"
+  }
+}

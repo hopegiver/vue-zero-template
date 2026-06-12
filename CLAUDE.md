@@ -127,13 +127,13 @@ export default router
 VueZero.createApp({ auth: { enabled: true, loginPage: '/login' } })
 ```
 
-### 동작 방식
+### 동작 방식 — opt-out 방식 (중요)
 
 `auth.enabled: true`이면 **모든 페이지가 기본적으로 보호**됩니다.
-공개로 열어야 하는 페이지에만 `auth: false`를 명시합니다.
+공개로 열어야 하는 페이지에만 `auth: false`를 명시합니다. **`auth: true`는 쓰지 않습니다.**
 
 ```js
-// pages/login.vue — 공개 페이지
+// pages/login.vue — 반드시 auth: false 명시 (없으면 무한 리다이렉트)
 export default {
   auth: false,
   layout: false,
@@ -141,14 +141,40 @@ export default {
 ```
 
 ```js
-// pages/dashboard.vue — 보호 페이지 (별도 표기 불필요)
+// pages/index.vue — 공개 페이지
+export default {
+  auth: false,
+  title: '홈',
+}
+```
+
+```js
+// pages/dashboard.vue — 보호 페이지 (auth 생략 = 보호됨)
 export default {
   title: '대시보드',
 }
 ```
 
+**주의:** 로그인 페이지(`loginPage`)와 공개로 열어야 할 모든 페이지에 반드시 `auth: false`를 추가해야 합니다. 빠뜨리면 미인증 사용자가 해당 페이지에 접근할 수 없습니다.
+
 미인증 상태로 보호 페이지 접근 시 `loginPage`(`/login`)로 자동 리다이렉트됩니다.
-로그인 성공 후 `localStorage.token`에 JWT를 저장하면 인증 상태가 됩니다.
+
+### 로그인 / 로그아웃
+
+**로그인** — API에서 받은 JWT를 `localStorage`에 저장하면 인증 상태가 됩니다.
+
+```js
+const data = await res.json()
+localStorage.setItem('token', data.token)
+this.$router.push('/')
+```
+
+**로그아웃** — `localStorage`에서 토큰을 제거하고 로그인 페이지로 이동합니다.
+
+```js
+localStorage.removeItem('token')
+this.$router.push('/login')
+```
 
 ### API 보호
 

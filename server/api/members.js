@@ -8,9 +8,4 @@ router.get('/', (c) => {
   return c.json({ members: dao.findAll() })
 })
 
-router.get('/table', (c) => {
-  const dao = new MembersDao(c.env)
-  return c.json({ items: dao.getTableData() })
-})
-
 export default router

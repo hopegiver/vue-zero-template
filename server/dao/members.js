@@ -1,28 +1,32 @@
 const members = [
-  { id: 1, name: '김철수', email: 'kim@example.com', role: 'admin', joinDate: '2024-01-15' },
-  { id: 2, name: '이영희', email: 'lee@example.com', role: 'user', joinDate: '2024-02-20' },
-  { id: 3, name: '박민수', email: 'park@example.com', role: 'user', joinDate: '2024-03-10' },
-  { id: 4, name: '최지은', email: 'choi@example.com', role: 'banned', joinDate: '2024-04-05' },
-  { id: 5, name: '정하늘', email: 'jung@example.com', role: 'user', joinDate: '2024-05-12' },
-  { id: 6, name: '강서윤', email: 'kang@example.com', role: 'admin', joinDate: '2024-06-01' },
+  { id: 1, name: '김*린', nickname: 'Aileen', dob: '1908.**', academy: '말근소프트 강남점', curriculum: 'Ivy Master', day: '월화수목금(MTWThF)', level: 'CA 3B', rsaScore: 85, yeptStatus: 'done', yeptText: '완료' },
+  { id: 2, name: '박*연', nickname: 'Ella', dob: '1905.**', academy: '말근소프트 강남점', curriculum: 'Ivy Master', day: '월화수목금(MTWThF)', level: 'PG 6B', rsaScore: 92, yeptStatus: 'done', yeptText: '완료' },
+  { id: 3, name: '이*윤', nickname: 'Peter', dob: '1908.**', academy: '말근소프트 서초점', curriculum: 'Ivy Master', day: '월화수목금(MTWThF)', level: 'PG 5B', rsaScore: 78, yeptStatus: 'done', yeptText: '완료' },
+  { id: 4, name: '이*이', nickname: '', dob: '1906.**', academy: '말근소프트 서초점', curriculum: 'Ivy Master', day: '월화수목금(MTWThF)', level: 'CA 3B', rsaScore: 88, yeptStatus: 'done', yeptText: '완료' },
+  { id: 5, name: '장*우', nickname: 'Bella', dob: '1908.**', academy: '말근소프트 송파점', curriculum: 'Elementary (초등회화반)', day: '월수금(MWF)', level: 'PG 4A', rsaScore: 95, yeptStatus: 'wait', yeptText: '대기' },
+  { id: 6, name: '정*원', nickname: 'Jenny', dob: '1906.**', academy: '말근소프트 송파점', curriculum: 'Elementary (초등회화반)', day: '월수금(MWF)', level: 'PG 4A', rsaScore: 72, yeptStatus: 'done', yeptText: '완료' },
+  { id: 7, name: '허*우', nickname: 'Lucas.H', dob: '1912.**', academy: '말근소프트 강동점', curriculum: 'ONE TO ONE', day: '화목(TTh)', level: 'CA 2A', rsaScore: 81, yeptStatus: 'done', yeptText: '완료' },
+  { id: 8, name: '허*빈', nickname: 'Belle', dob: '1912.**', academy: '말근소프트 강동점', curriculum: 'ONE TO ONE', day: '화목(TTh)', level: 'CA 2A', rsaScore: 90, yeptStatus: 'cancel', yeptText: '취소' },
+  { id: 9, name: '강*준', nickname: 'Ethan', dob: '1910.**', academy: '말근소프트 마포점', curriculum: '단과', day: '화목(TTh)', level: 'PG 3B', rsaScore: 67, yeptStatus: 'done', yeptText: '완료' },
+  { id: 10, name: '윤*서', nickname: 'Sophie', dob: '1907.**', academy: '말근소프트 강남점', curriculum: 'Ivy Master', day: '월화수목금(MTWThF)', level: 'CA 4A', rsaScore: 91, yeptStatus: 'progress', yeptText: '진행 중' },
+  { id: 11, name: '최*호', nickname: 'Daniel', dob: '1909.**', academy: '말근소프트 강남점', curriculum: 'Ivy Master', day: '월화수목금(MTWThF)', level: 'PG 5A', rsaScore: 83, yeptStatus: 'done', yeptText: '완료' },
+  { id: 12, name: '한*아', nickname: 'Olivia', dob: '1907.**', academy: '말근소프트 서초점', curriculum: 'Elementary (초등회화반)', day: '월수금(MWF)', level: 'CA 2B', rsaScore: 76, yeptStatus: 'done', yeptText: '완료' },
+  { id: 13, name: '서*민', nickname: 'Ryan', dob: '1911.**', academy: '말근소프트 강동점', curriculum: 'ONE TO ONE', day: '화목(TTh)', level: 'PG 3A', rsaScore: 89, yeptStatus: 'wait', yeptText: '대기' },
+  { id: 14, name: '조*은', nickname: 'Grace', dob: '1908.**', academy: '말근소프트 송파점', curriculum: 'Ivy Master', day: '월화수목금(MTWThF)', level: 'CA 4B', rsaScore: 94, yeptStatus: 'done', yeptText: '완료' },
+  { id: 15, name: '임*혁', nickname: 'Leo', dob: '1910.**', academy: '말근소프트 마포점', curriculum: '단과', day: '화목(TTh)', level: 'PG 4B', rsaScore: 71, yeptStatus: 'done', yeptText: '완료' },
+  { id: 16, name: '오*진', nickname: 'Chloe', dob: '1906.**', academy: '말근소프트 강남점', curriculum: 'Elementary (초등회화반)', day: '월수금(MWF)', level: 'CA 3A', rsaScore: 87, yeptStatus: 'progress', yeptText: '진행 중' },
+  { id: 17, name: '유*빈', nickname: 'Emily', dob: '1909.**', academy: '말근소프트 서초점', curriculum: 'Ivy Master', day: '월화수목금(MTWThF)', level: 'PG 6A', rsaScore: 96, yeptStatus: 'done', yeptText: '완료' },
+  { id: 18, name: '권*수', nickname: 'Mason', dob: '1911.**', academy: '말근소프트 강동점', curriculum: 'ONE TO ONE', day: '화목(TTh)', level: 'CA 2A', rsaScore: 74, yeptStatus: 'cancel', yeptText: '취소' },
+  { id: 19, name: '신*영', nickname: 'Lily', dob: '1907.**', academy: '말근소프트 송파점', curriculum: 'Elementary (초등회화반)', day: '월수금(MWF)', level: 'PG 4A', rsaScore: 82, yeptStatus: 'done', yeptText: '완료' },
+  { id: 20, name: '문*기', nickname: 'Jake', dob: '1910.**', academy: '말근소프트 마포점', curriculum: '단과', day: '화목(TTh)', level: 'PG 3B', rsaScore: 69, yeptStatus: 'done', yeptText: '완료' },
+  { id: 21, name: '배*율', nickname: 'Noah', dob: '1908.**', academy: '말근소프트 강남점', curriculum: 'Ivy Master', day: '월화수목금(MTWThF)', level: 'CA 3B', rsaScore: 93, yeptStatus: 'done', yeptText: '완료' },
+  { id: 22, name: '황*은', nickname: 'Mia', dob: '1906.**', academy: '말근소프트 서초점', curriculum: 'Ivy Master', day: '월화수목금(MTWThF)', level: 'PG 5B', rsaScore: 80, yeptStatus: 'wait', yeptText: '대기' },
+  { id: 23, name: '전*우', nickname: 'Henry', dob: '1912.**', academy: '말근소프트 강동점', curriculum: 'ONE TO ONE', day: '화목(TTh)', level: 'CA 2B', rsaScore: 86, yeptStatus: 'done', yeptText: '완료' },
+  { id: 24, name: '송*하', nickname: 'Zoe', dob: '1909.**', academy: '말근소프트 송파점', curriculum: 'Elementary (초등회화반)', day: '월수금(MWF)', level: 'PG 4A', rsaScore: 77, yeptStatus: 'done', yeptText: '완료' },
+  { id: 25, name: '안*현', nickname: 'Oscar', dob: '1911.**', academy: '말근소프트 마포점', curriculum: '단과', day: '화목(TTh)', level: 'PG 3A', rsaScore: 70, yeptStatus: 'progress', yeptText: '진행 중' },
 ]
-
-const names = ['김철수','이영희','박민수','최지은','정하늘','강서윤','윤도현','임수아','한재민','오유진',
-               '배성호','조은비','송태양','류미래','권지훈','황보람','안세진','문하은','장동욱','노시연']
-const roles = ['개발자','디자이너','PM','QA','마케터']
-const statuses = ['active','inactive','pending']
-
-const tableData = names.map((name, i) => ({
-  id: i + 1,
-  name,
-  role: roles[i % roles.length],
-  score: Math.floor(Math.random() * 100) + 1,
-  status: statuses[i % statuses.length],
-}))
 
 export default class MembersDao {
   constructor(env) { this.env = env }
-
   findAll() { return members }
-  getTableData() { return tableData }
 }

@@ -2,7 +2,7 @@
   <div class="container py-4">
     <h1 class="mb-3">대시보드</h1>
     <p v-if="loading" class="text-muted">불러오는 중...</p>
-    <template v-else>
+    <div v-else>
       <div class="row g-3 mb-4">
         <div class="col-6 col-md-3" v-for="stat in stats" :key="stat.label">
           <div class="card p-3 text-center">
@@ -40,14 +40,13 @@
           </div>
         </div>
       </div>
-    </template>
+    </div>
   </div>
 </template>
 
 <script>
 export default {
   title: '대시보드',
-  requiresAuth: true,
   data() {
     return {
       loading: true,

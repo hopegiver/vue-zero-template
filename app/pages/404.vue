@@ -5,3 +5,9 @@
     <router-link to="/" class="btn btn-outline-secondary btn-sm">홈으로 돌아가기</router-link>
   </div>
 </template>
+
+<script>
+export default {
+  auth: false,
+}
+</script>

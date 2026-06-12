@@ -17,6 +17,7 @@
 <script>
 export default {
   layout: false,
+  auth: false,
   title: '로그인',
   data() {
     return {

@@ -57,9 +57,22 @@ Claude Code 사용 시 hook이 자동 실행하므로 수동 실행 불필요.
 
 `layouts/default.vue` → 모든 페이지에 자동 적용. `layout: 'admin'` 또는 `layout: false`로 페이지별 변경.
 
-### 규칙 4 — 404, title, composables
+### 규칙 4 — .vue 내부에 `<template>` 태그 중첩 금지
 
-- `pages/404.vue` → 자동 catch-all. pages.json에 등록하지 않음
+vue-zero는 정규식으로 SFC를 파싱하므로 `.vue` 파일 안에 `<template>` 태그를 중첩하면 파싱이 조기 종료됩니다.
+`<template v-for>`, `<template v-if>` 등 Vue 래퍼 태그는 반드시 `<div>` 또는 다른 실제 HTML 태그로 대체하세요.
+
+```html
+<!-- 금지 — 파싱 조기 종료 유발 -->
+<template v-for="item in list" :key="item.id">...</template>
+
+<!-- 올바름 -->
+<div v-for="item in list" :key="item.id">...</div>
+```
+
+### 규칙 5 — 404, title, composables
+
+- `pages/404.vue` → 자동 catch-all. pages.json에 등록하지 않음. 인증 사용 시 `auth: false` 필수
 - `title: '페이지명'` → document.title 자동 설정
 - `composables/` → 자동 등록 없음, 직접 import
 
@@ -107,13 +120,53 @@ export default router
 
 > 인증 미사용 시 이 섹션 삭제.
 
+### 활성화
+
 ```js
+// app/index.html
 VueZero.createApp({ auth: { enabled: true, loginPage: '/login' } })
 ```
 
-- 보호 페이지: `.vue`에 `requiresAuth: true`
-- API 보호: `router.get('/me', authMiddleware, handler)`
-- 토큰: `localStorage.token` (JWT), 요청 시 `Authorization: Bearer <token>`
+### 동작 방식
+
+`auth.enabled: true`이면 **모든 페이지가 기본적으로 보호**됩니다.
+공개로 열어야 하는 페이지에만 `auth: false`를 명시합니다.
+
+```js
+// pages/login.vue — 공개 페이지
+export default {
+  auth: false,
+  layout: false,
+}
+```
+
+```js
+// pages/dashboard.vue — 보호 페이지 (별도 표기 불필요)
+export default {
+  title: '대시보드',
+}
+```
+
+미인증 상태로 보호 페이지 접근 시 `loginPage`(`/login`)로 자동 리다이렉트됩니다.
+로그인 성공 후 `localStorage.token`에 JWT를 저장하면 인증 상태가 됩니다.
+
+### API 보호
+
+```js
+// server/api/users.js
+import { authMiddleware } from '../middleware/auth.js'
+
+router.get('/me', authMiddleware, (c) => {
+  const user = c.get('user')  // JWT 페이로드
+  return c.json({ user })
+})
+```
+
+### 토큰
+
+- 저장: `localStorage.setItem('token', jwt)`
+- 요청: `Authorization: Bearer <token>` 헤더
+- 만료: JWT `exp` 클레임 기준 자동 체크 (만료 시 자동 제거 후 로그인 리다이렉트)
 
 ## 외부 라이브러리
 

@@ -13,7 +13,7 @@
         <li class="py-1 border-bottom"><router-link to="/settings">Settings</router-link> <span class="text-faint small">— select, checkbox</span></li>
         <li class="py-1 border-bottom"><router-link to="/minimal">Minimal</router-link> <span class="text-faint small">— script 없는 순수 템플릿</span></li>
         <li class="py-1 border-bottom"><router-link to="/todo">Todo</router-link> <span class="text-faint small">— CRUD + 필터 + 인라인 편집</span></li>
-        <li class="py-1 border-bottom"><router-link to="/dashboard">Dashboard</router-link> <span class="text-faint small">— 그리드 레이아웃 + requiresAuth</span></li>
+        <li class="py-1 border-bottom"><router-link to="/dashboard">Dashboard</router-link> <span class="text-faint small">— 그리드 레이아웃 + 인증 필요</span></li>
         <li class="py-1 border-bottom"><router-link to="/datatable">DataTable</router-link> <span class="text-faint small">— 정렬 + 검색 + 페이지네이션</span></li>
         <li class="py-1 border-bottom"><router-link to="/tabs?tab=profile">Tabs</router-link> <span class="text-faint small">— 탭 UI + 쿼리스트링 동기화</span></li>
         <li class="py-1 border-bottom"><router-link to="/gallery">Gallery</router-link> <span class="text-faint small">— 그리드/리스트 뷰 전환 + 모달</span></li>
@@ -24,6 +24,7 @@
         <li class="py-1 border-bottom"><router-link to="/admin">Admin</router-link> <span class="text-faint small">— layout: 'admin' (레이아웃 전환)</span></li>
         <li class="py-1 border-bottom"><router-link to="/admin/members">Admin 회원관리</router-link> <span class="text-faint small">— admin 레이아웃 내 이동</span></li>
         <li class="py-1 border-bottom"><router-link to="/login">Login</router-link> <span class="text-faint small">— layout: false</span></li>
+        <li class="py-1 border-bottom"><router-link to="/nested-template-test">중첩 template 테스트</router-link> <span class="text-faint small">— template v-for/v-if 중첩 파싱</span></li>
         <li class="py-1"><router-link to="/nonexistent">404 테스트</router-link> <span class="text-faint small">— 존재하지 않는 경로</span></li>
       </ul>
     </div>
@@ -34,6 +35,7 @@
 
 <script>
 export default {
+  auth: false,
   title: 'vue-zero Home',
   data() {
     return {

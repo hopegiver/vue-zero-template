@@ -57,18 +57,18 @@ Claude Code 사용 시 hook이 자동 실행하므로 수동 실행 불필요.
 
 `layouts/default.vue` → 모든 페이지에 자동 적용. `layout: 'admin'` 또는 `layout: false`로 페이지별 변경.
 
-### 규칙 4 — .vue 내부에 `<template>` 태그 중첩 금지
+### 규칙 4 — 컴포넌트는 꼭 필요할 때만
 
-vue-zero는 정규식으로 SFC를 파싱하므로 `.vue` 파일 안에 `<template>` 태그를 중첩하면 파싱이 조기 종료됩니다.
-`<template v-for>`, `<template v-if>` 등 Vue 래퍼 태그는 반드시 `<div>` 또는 다른 실제 HTML 태그로 대체하세요.
+vue-zero는 컴포넌트를 앱 초기화 시 전부 fetch·파싱합니다. 컴포넌트가 많아질수록 초기 로딩이 느려집니다.
 
-```html
-<!-- 금지 — 파싱 조기 종료 유발 -->
-<template v-for="item in list" :key="item.id">...</template>
+**컴포넌트로 만드는 기준 — 2개 이상의 페이지에서 공통으로 사용되는 UI**
 
-<!-- 올바름 -->
-<div v-for="item in list" :key="item.id">...</div>
 ```
+좋은 예: UserCard, AppButton, DataTable, Modal
+나쁜 예: 한 페이지에서만 쓰는 섹션 → 페이지 안에 인라인으로 작성
+```
+
+컴포넌트를 추가하면 `npm run scan` 실행 (hook이 자동 처리).
 
 ### 규칙 5 — 404, title, composables
 

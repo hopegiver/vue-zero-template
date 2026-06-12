@@ -116,7 +116,7 @@
 </template>
 
 <script>
-import { useApi } from '../../composables/useApi.js'
+import { useApi } from '/composables/useApi.js'
 
 export default {
   layout: 'admin',

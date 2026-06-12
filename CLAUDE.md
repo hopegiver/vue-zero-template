@@ -77,7 +77,7 @@ vue-zero는 컴포넌트를 앱 초기화 시 전부 fetch·파싱합니다. 컴
 - `composables/` → 자동 등록 없음, 직접 import. `useApi.js` 샘플 참고
 
 ```js
-import { useApi } from '../composables/useApi.js'
+import { useApi } from '/composables/useApi.js'
 
 async mounted() {
   const { data, error } = await useApi('/api/users')

@@ -29,7 +29,9 @@ vue-zero-template/
     ├── pages/                # pages.json으로 라우트 자동 등록
     ├── components/           # components.json으로 전역 등록
     ├── layouts/
-    └── composables/
+    └── assets/
+        ├── js/vue-zero.js    # 프레임워크
+        └── js/utils.js       # 전역 유틸 함수 (useApi 등)
 ```
 
 ## 개발 명령어
@@ -70,20 +72,23 @@ vue-zero는 컴포넌트를 앱 초기화 시 전부 fetch·파싱합니다. 컴
 
 컴포넌트를 추가하면 `npm run scan` 실행 (hook이 자동 처리).
 
-### 규칙 5 — 404, title, composables
+### 규칙 5 — 404, title, 유틸
 
 - `pages/404.vue` → 자동 catch-all. pages.json에 등록하지 않음. 인증 사용 시 `auth: false` 필수
 - `title: '페이지명'` → document.title 자동 설정
-- `composables/` — `index.html`에서 `<script src="/composables/useApi.js">` 로 로드하면 전역 함수로 사용 가능. import 불필요.
+- **`composables/` 사용 금지** — vue-zero는 Blob URL로 `.vue`를 실행하므로 ES module import가 불가능. Vue composable 패턴은 동작하지 않는다.
+- **유틸 함수는 `assets/js/utils.js`에 추가** — `index.html`에서 `<script>`로 로드되어 전역 함수로 사용. import 불필요.
 
 ```js
-// index.html에 <script src="/composables/useApi.js"> 추가 후 .vue에서 바로 사용
+// .vue에서 import 없이 바로 사용
 async mounted() {
   const { data, error } = await useApi('/api/users')
   if (error) { this.error = error; return }
   this.users = data.users
 }
 ```
+
+새 유틸 함수가 필요하면 `assets/js/utils.js`에 추가한다. 파일을 새로 만들지 않는다.
 
 ---
 

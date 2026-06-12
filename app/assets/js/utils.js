@@ -1,14 +1,16 @@
 /**
+ * utils.js — 전역 유틸 함수 모음
+ * index.html에서 <script src="/assets/js/utils.js"> 로 로드.
+ * .vue 파일에서 import 없이 바로 사용.
+ */
+
+/**
  * useApi — 범용 API fetch 헬퍼
  *
- * index.html에서 <script src="/composables/useApi.js"> 로 로드되어 window.useApi 로 사용.
- *
- * 사용법:
- *   async mounted() {
- *     const { data, error } = await useApi('/api/users')
- *     if (error) { this.error = error; return }
- *     this.users = data.users
- *   }
+ * GET:
+ *   const { data, error } = await useApi('/api/users')
+ *   if (error) { this.error = error; return }
+ *   this.users = data.users
  *
  * POST:
  *   const { data, error } = await useApi('/api/posts', {

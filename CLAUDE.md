@@ -74,13 +74,13 @@ vue-zero는 컴포넌트를 앱 초기화 시 전부 fetch·파싱합니다. 컴
 
 - `pages/404.vue` → 자동 catch-all. pages.json에 등록하지 않음. 인증 사용 시 `auth: false` 필수
 - `title: '페이지명'` → document.title 자동 설정
-- `composables/` → 자동 등록 없음, 직접 import. `useFetch.js` 샘플 참고
+- `composables/` → 자동 등록 없음, 직접 import. `useApi.js` 샘플 참고
 
 ```js
-import { useFetch } from '../composables/useFetch.js'
+import { useApi } from '../composables/useApi.js'
 
 async mounted() {
-  const { data, error } = await useFetch('/api/users')
+  const { data, error } = await useApi('/api/users')
   if (error) { this.error = error; return }
   this.users = data.users
 }

@@ -1,24 +1,24 @@
 /**
- * useFetch — 범용 API fetch 헬퍼
+ * useApi — 범용 API fetch 헬퍼
  *
  * 사용법:
- *   import { useFetch } from '../composables/useFetch.js'
+ *   import { useApi } from '../composables/useApi.js'
  *
  *   async mounted() {
- *     const { data, error } = await useFetch('/api/users')
+ *     const { data, error } = await useApi('/api/users')
  *     if (error) { this.error = error; return }
  *     this.users = data.users
  *   }
  *
  * POST:
- *   const { data, error } = await useFetch('/api/posts', {
+ *   const { data, error } = await useApi('/api/posts', {
  *     method: 'POST',
  *     body: { title: '제목', content: '내용' },
  *   })
  *
  * 인증 토큰은 localStorage.token 이 있으면 자동으로 Authorization 헤더에 추가됩니다.
  */
-export async function useFetch(url, options = {}) {
+export async function useApi(url, options = {}) {
   const { method = 'GET', body } = options
 
   const headers = { 'Content-Type': 'application/json' }

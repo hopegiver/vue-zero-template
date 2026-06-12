@@ -17,9 +17,16 @@
           <div class="card p-3">
             <h2 class="h6 mb-3">최근 활동</h2>
             <div class="d-flex flex-column gap-2">
-              <UserCard v-for="user in activeUsers" :key="user.name"
-                :name="user.name" :role="user.role" :color="user.color"
-                @select="selectedUser = user.name" />
+              <div v-for="user in activeUsers" :key="user.name"
+                class="d-flex align-items-center gap-3 p-3 bg-canvas rounded-2 border border-hairline user-card-hover"
+                role="button" @click="selectedUser = user.name">
+                <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0 user-card-avatar"
+                     :style="{ background: user.color }">{{ user.name.slice(0, 1) }}</div>
+                <div>
+                  <strong class="d-block small">{{ user.name }}</strong>
+                  <span class="text-faint text-eyebrow">{{ user.role }}</span>
+                </div>
+              </div>
             </div>
             <p v-if="selectedUser" class="mt-2 mb-0 small fw-bold text-primary">선택: {{ selectedUser }}</p>
           </div>
@@ -85,3 +92,9 @@ export default {
   }
 }
 </script>
+
+<style>
+.user-card-hover { cursor: pointer; transition: box-shadow 0.15s; }
+.user-card-hover:hover { box-shadow: var(--shadow-soft); }
+.user-card-avatar { width: 36px; height: 36px; font-size: 0.875rem; }
+</style>

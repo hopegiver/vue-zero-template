@@ -28,16 +28,9 @@ export default {
   async mounted() {
     const id = this.$route.params.id
     this.userName = '유저 ' + id
-    try {
-      const res = await fetch(`/api/users/${id}/posts`)
-      if (!res.ok) throw new Error()
-      const data = await res.json()
-      this.posts = data.posts
-    } catch {
-      this.posts = []
-    } finally {
-      this.loading = false
-    }
+    const { data } = await useApi(`/api/users/${id}/posts`)
+    this.posts = data?.posts ?? []
+    this.loading = false
   }
 }
 </script>

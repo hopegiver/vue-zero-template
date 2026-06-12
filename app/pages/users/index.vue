@@ -25,16 +25,10 @@ export default {
     }
   },
   async mounted() {
-    try {
-      const res = await fetch('/api/users')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      this.users = data.users
-    } catch (e) {
-      this.error = '유저 목록을 불러오지 못했습니다.'
-    } finally {
-      this.loading = false
-    }
+    const { data, error } = await useApi('/api/users')
+    if (error) { this.error = '유저 목록을 불러오지 못했습니다.'; this.loading = false; return }
+    this.users = data.users
+    this.loading = false
   }
 }
 </script>

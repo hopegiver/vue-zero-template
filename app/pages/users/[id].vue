@@ -45,17 +45,9 @@ export default {
   methods: {
     async loadUser() {
       this.loading = true
-      const id = this.$route.params.id
-      try {
-        const res = await fetch(`/api/users/${id}`)
-        if (!res.ok) throw new Error()
-        const data = await res.json()
-        this.user = data.user
-      } catch {
-        this.user = null
-      } finally {
-        this.loading = false
-      }
+      const { data, error } = await useApi(`/api/users/${this.$route.params.id}`)
+      this.user = error ? null : data.user
+      this.loading = false
     }
   }
 }

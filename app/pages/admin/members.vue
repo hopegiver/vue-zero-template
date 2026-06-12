@@ -116,8 +116,6 @@
 </template>
 
 <script>
-import { useApi } from '/composables/useApi.js'
-
 export default {
   layout: 'admin',
   title: 'Moby Read 리포트',

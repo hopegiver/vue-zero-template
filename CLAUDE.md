@@ -74,11 +74,10 @@ vue-zero는 컴포넌트를 앱 초기화 시 전부 fetch·파싱합니다. 컴
 
 - `pages/404.vue` → 자동 catch-all. pages.json에 등록하지 않음. 인증 사용 시 `auth: false` 필수
 - `title: '페이지명'` → document.title 자동 설정
-- `composables/` → 자동 등록 없음, 직접 import. `useApi.js` 샘플 참고
+- `composables/` — `index.html`에서 `<script src="/composables/useApi.js">` 로 로드하면 전역 함수로 사용 가능. import 불필요.
 
 ```js
-import { useApi } from '/composables/useApi.js'
-
+// index.html에 <script src="/composables/useApi.js"> 추가 후 .vue에서 바로 사용
 async mounted() {
   const { data, error } = await useApi('/api/users')
   if (error) { this.error = error; return }

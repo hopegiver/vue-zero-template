@@ -1,9 +1,9 @@
 /**
  * useApi — 범용 API fetch 헬퍼
  *
- * 사용법:
- *   import { useApi } from '../composables/useApi.js'
+ * index.html에서 <script src="/composables/useApi.js"> 로 로드되어 window.useApi 로 사용.
  *
+ * 사용법:
  *   async mounted() {
  *     const { data, error } = await useApi('/api/users')
  *     if (error) { this.error = error; return }
@@ -18,7 +18,7 @@
  *
  * 인증 토큰은 localStorage.token 이 있으면 자동으로 Authorization 헤더에 추가됩니다.
  */
-export async function useApi(url, options = {}) {
+async function useApi(url, options = {}) {
   const { method = 'GET', body } = options
 
   const headers = { 'Content-Type': 'application/json' }

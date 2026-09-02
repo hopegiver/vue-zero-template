@@ -9,7 +9,7 @@ npm install
 wrangler dev
 ```
 
-http://localhost:8787 에서 확인.
+http://localhost:8004 에서 확인.
 
 ## 구조
 

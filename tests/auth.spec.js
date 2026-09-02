@@ -1,7 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test'
 
-const BASE = 'http://localhost:8787'
+const BASE = 'http://localhost:8004'
 const LOGIN_EMAIL = 'admin@example.com'
 const LOGIN_PASSWORD = 'password'
 
@@ -16,7 +16,7 @@ async function login(page) {
 
 // 로그아웃 헬퍼 — 페이지가 열린 상태에서만 동작
 async function logout(page) {
-  await page.goto('http://localhost:8787/login', { waitUntil: 'domcontentloaded' })
+  await page.goto(BASE + '/login', { waitUntil: 'domcontentloaded' })
   await page.evaluate(() => localStorage.removeItem('token'))
 }
 

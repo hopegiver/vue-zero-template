@@ -47,7 +47,7 @@ vue-zero-template/
 ## 개발 명령어
 
 ```bash
-wrangler dev     # 로컬 개발 (http://localhost:8787)
+wrangler dev     # 로컬 개발 (http://localhost:8004)
 wrangler deploy  # 프로덕션 배포
 npm run scan     # pages.json, components.json, _registry.js 갱신
 ```

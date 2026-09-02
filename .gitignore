@@ -2,3 +2,4 @@ node_modules/
 .wrangler/
 STATUS.md
 .dev.vars
+test-results/

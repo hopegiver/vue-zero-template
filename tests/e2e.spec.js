@@ -1,7 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test'
 
-const BASE = 'http://localhost:8787'
+const BASE = 'http://localhost:8004'
 
 // 모든 페이지가 에러 없이 로드되는지 확인
 const pages = [
@@ -48,6 +48,26 @@ for (const p of pages) {
 test('404 페이지', async ({ page }) => {
   await page.goto(BASE + '/nonexistent', { waitUntil: 'networkidle' })
   await expect(page.locator('body')).toContainText('페이지를 찾을 수 없습니다', { timeout: 5000 })
+})
+
+// error.vue — 페이지 컴포넌트 fetch 실패 시 에러 화면 표시 (beforeEach catch 트리거)
+test('error.vue — 페이지 로드 실패 시 에러 화면 표시, URL 미변경, 홈 복귀', async ({ page }) => {
+  await page.goto(BASE + '/about', { waitUntil: 'networkidle' })
+
+  // /users 페이지의 .vue fetch를 가로채 500을 반환시켜 beforeEach의 catch 블록을 강제로 트리거
+  await page.route('**/pages/users/index.vue', route => route.fulfill({ status: 500, body: 'boom' }))
+
+  await page.click('a[href="/users"]')
+  await expect(page.locator('body')).toContainText('오류', { timeout: 5000 })
+  await expect(page.locator('body')).toContainText('문제가 발생했습니다', { timeout: 5000 })
+
+  // 라우팅 자체가 취소되어 URL은 그대로 유지되어야 함
+  expect(page.url()).toBe(BASE + '/about')
+
+  // "홈으로 돌아가기" 링크로 정상 복귀
+  await page.click('text=홈으로 돌아가기')
+  await expect(page.locator('body')).toContainText('vue-zero 예제 앱입니다.', { timeout: 5000 })
+  expect(page.url()).toBe(BASE + '/')
 })
 
 // 레이아웃 전환: default → admin → default

@@ -4,11 +4,11 @@ export default defineConfig({
   testDir: './tests',
   timeout: 20000,
   use: {
-    baseURL: 'http://localhost:8787',
+    baseURL: 'http://localhost:8004',
   },
   webServer: {
-    command: 'wrangler dev --port 8787 --live-reload=false --log-level error',
-    port: 8787,
+    command: 'wrangler dev --port 8004 --live-reload=false --log-level error',
+    port: 8004,
     reuseExistingServer: true,
     timeout: 30000,
   },

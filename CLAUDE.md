@@ -2,6 +2,16 @@
 
 > vue-zero 프레임워크의 공식 템플릿 프로젝트. 풀스택 데모 앱과 개발 환경을 포함.
 
+## 새 세션 부트스트랩
+
+`STATUS.md`(라이브 상태) + 이 `CLAUDE.md`(구조·규칙)로 대부분 충분. 깊은 이력은 malgnai-hub `project_get_context`.
+
+**STATUS.md 재작성은 다음 6가지 상황으로 제한한다** — 그 외 평범한 진행 중에는 건드리지 않는다:
+①중요한 작업 완료 ②WBS 단계 변경 ③중요한 설계 결정 ④blocker 발생/해결 ⑤세션 종료 ⑥context compact 직전.
+그 외에는 malgnai-hub `work_record`/`decision_record`/`issue_record`에만 기록하고 STATUS.md는 그대로 둔다.
+
+**필수 규율:** 주요 결정/이슈/교훈은 malgnai-hub에 기록.
+
 ## 프로젝트 개요
 
 vue-zero 기반 앱의 레퍼런스 템플릿. 페이지, 컴포넌트, 레이아웃, API 엔드포인트의 실제 사용 예시를 포함하며, 새 프로젝트의 시작점으로 사용.
@@ -214,4 +224,4 @@ router.get('/me', authMiddleware, (c) => {
 |-----------|-----|
 | Vue 3 | unpkg.com/vue@3/dist/vue.global.prod.js |
 | Vue Router 4 | unpkg.com/vue-router@4/dist/vue-router.global.prod.js |
-| vue-zero | unpkg.com/vue-ai-first/dist/vue-zero.js |
+| vue-zero | unpkg.com/vue-zero-ai/dist/vue-zero.js |

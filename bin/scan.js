@@ -57,7 +57,7 @@ if (scanApp) {
     console.log('[vue-zero] scanning app/pages')
     syncJson('app/pages', 'pages.json', rel => {
       const name = rel.replace(/\\/g, '/').replace(/\.vue$/, '')
-      return name === '404' ? null : name
+      return (name === '404' || name === 'error') ? null : name
     })
   }
 

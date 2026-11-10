@@ -24,8 +24,8 @@ const pages = [
   { path: '/users', title: null, has: 'Users' },
   { path: '/users/1', title: '유저 상세', has: '다른 유저' },
   { path: '/users/1/posts', title: '유저 게시글', has: '게시글' },
-  { path: '/admin', title: '관리자 대시보드', has: '관리자 대시보드' },
-  { path: '/admin/members', title: '회원 관리', has: '회원 관리' },
+  { path: '/admin', title: '관리자 대시보드', has: '안녕하세요, 관리자님' },
+  { path: '/admin/members', title: 'Moby Read 리포트', has: 'Moby Read 리포트' },
 ]
 
 for (const p of pages) {
@@ -73,23 +73,25 @@ test('error.vue — 페이지 로드 실패 시 에러 화면 표시, URL 미변
 // 레이아웃 전환: default → admin → default
 test('레이아웃 전환 (default → admin → default)', async ({ page }) => {
   await page.goto(BASE + '/', { waitUntil: 'networkidle' })
-  await expect(page.locator('.layout-default')).toBeVisible()
+  // default 레이아웃 = 상단 navbar, admin 레이아웃 = .admin-wrap
+  await expect(page.locator('nav.navbar')).toBeVisible()
 
   await page.click('a[href="/admin"]')
-  await expect(page.locator('.layout-admin')).toBeVisible({ timeout: 5000 })
-  await expect(page.locator('.layout-default')).not.toBeVisible()
+  await expect(page.locator('.admin-wrap')).toBeVisible({ timeout: 5000 })
+  await expect(page.locator('nav.navbar')).not.toBeVisible()
 
-  await page.click('a[href="/"]')
-  await expect(page.locator('.layout-default')).toBeVisible({ timeout: 5000 })
-  await expect(page.locator('.layout-admin')).not.toBeVisible()
+  // admin 레이아웃에는 홈 링크가 없으므로 뒤로 가기로 default 레이아웃 복귀를 확인
+  await page.goBack()
+  await expect(page.locator('nav.navbar')).toBeVisible({ timeout: 5000 })
+  await expect(page.locator('.admin-wrap')).not.toBeVisible()
 })
 
 // layout: false (로그인 페이지에 레이아웃 없음)
 test('layout: false — 로그인 페이지에 레이아웃 없음', async ({ page }) => {
   await page.goto(BASE + '/login', { waitUntil: 'networkidle' })
-  await expect(page.locator('.layout-default')).not.toBeVisible()
-  await expect(page.locator('.layout-admin')).not.toBeVisible()
-  await expect(page.locator('.page-login')).toBeVisible()
+  await expect(page.locator('nav.navbar')).not.toBeVisible()
+  await expect(page.locator('.admin-wrap')).not.toBeVisible()
+  await expect(page.locator('input[type="email"]')).toBeVisible()
 })
 
 // 같은 레이아웃 내 페이지 이동 (admin 레이아웃 유지)
@@ -99,13 +101,13 @@ test('같은 레이아웃 내 이동 (admin 유지)', async ({ page }) => {
 
   await page.click('a[href="/admin/members"]')
   await expect(page.locator('.admin-sidebar')).toBeVisible()
-  await expect(page.locator('.page-admin-members')).toBeVisible({ timeout: 5000 })
+  await expect(page.getByRole('heading', { name: 'Moby Read 리포트' })).toBeVisible({ timeout: 5000 })
 })
 
 // 동적 라우트 파라미터 변경 (같은 컴포넌트 재사용)
 test('동적 라우트 파라미터 변경 (/users/1 → /users/2)', async ({ page }) => {
   await page.goto(BASE + '/users/1', { waitUntil: 'networkidle' })
-  await expect(page.locator('.page-user-detail')).toBeVisible()
+  await expect(page.getByText('다른 유저')).toBeVisible({ timeout: 5000 })
 
   await page.click('a[href="/users/2"]')
   await page.waitForTimeout(500)
@@ -119,10 +121,10 @@ test('히스토리 모드 — 서브페이지 새로고침', async ({ page }) =>
   page.on('pageerror', err => errors.push(err.message))
 
   await page.goto(BASE + '/users/1', { waitUntil: 'networkidle' })
-  await expect(page.locator('.page-user-detail')).toBeVisible({ timeout: 5000 })
+  await expect(page.getByText('다른 유저')).toBeVisible({ timeout: 5000 })
 
   await page.reload({ waitUntil: 'networkidle' })
-  await expect(page.locator('.page-user-detail')).toBeVisible({ timeout: 5000 })
+  await expect(page.getByText('다른 유저')).toBeVisible({ timeout: 5000 })
 
   expect(errors).toEqual([])
 })
@@ -130,55 +132,58 @@ test('히스토리 모드 — 서브페이지 새로고침', async ({ page }) =>
 // counter computed + watch
 test('counter — computed, watch 동작', async ({ page }) => {
   await page.goto(BASE + '/counter', { waitUntil: 'networkidle' })
+  const count = page.locator('.display-4')
+  const plus = page.getByRole('button', { name: '+1', exact: true })
 
-  await page.click('text=+1')
-  await expect(page.locator('.count')).toHaveText('1')
-  await expect(page.locator('.double')).toHaveText('x2 = 2')
-  await expect(page.locator('.history')).toContainText('변경 횟수: 1')
+  await plus.click()
+  await expect(count).toHaveText('1')
+  await expect(page.getByText('x2 = 2')).toBeVisible()
+  await expect(page.getByText('변경 횟수: 1')).toBeVisible()
 
-  await page.click('text=+1')
-  await expect(page.locator('.count')).toHaveText('2')
-  await expect(page.locator('.history')).toContainText('변경 횟수: 2')
+  await plus.click()
+  await expect(count).toHaveText('2')
+  await expect(page.getByText('변경 횟수: 2')).toBeVisible()
 
-  await page.click('text=초기화')
-  await expect(page.locator('.count')).toHaveText('0')
+  await page.getByRole('button', { name: '초기화' }).click()
+  await expect(count).toHaveText('0')
 })
 
 // search 쿼리스트링
 test('search — 쿼리스트링 동기화', async ({ page }) => {
   await page.goto(BASE + '/search?q=vue', { waitUntil: 'networkidle' })
-  const input = page.locator('.page-search input')
-  await expect(input).toHaveValue('vue')
-  await expect(page.locator('.page-search')).toContainText('vue-zero')
+  await expect(page.locator('input.form-control')).toHaveValue('vue')
+  await expect(page.locator('li', { hasText: 'vue-zero' })).toBeVisible()
 })
 
 // todo CRUD
 test('todo — 추가, 완료, 삭제', async ({ page }) => {
   await page.goto(BASE + '/todo', { waitUntil: 'networkidle' })
+  const items = page.locator('ul.list-unstyled li')
 
   // 추가
-  await page.fill('.todo-input input', '테스트 할일')
-  await page.click('text=추가')
-  await expect(page.locator('.page-todo li')).toContainText('테스트 할일')
+  await page.fill('input[placeholder="할일 입력..."]', '테스트 할일')
+  await page.getByRole('button', { name: '추가' }).click()
+  await expect(items).toContainText('테스트 할일')
 
   // 완료
-  await page.click('.page-todo li input[type="checkbox"]')
-  await expect(page.locator('.page-todo li.done')).toBeVisible()
+  await items.locator('input[type="checkbox"]').click()
+  await expect(items.locator('.text-decoration-line-through')).toBeVisible()
 
   // 완료 항목 삭제
-  await page.click('text=완료 항목 삭제')
-  await expect(page.locator('.page-todo li')).not.toBeVisible()
+  await page.getByRole('button', { name: '완료 항목 삭제' }).click()
+  await expect(items).toHaveCount(0)
 })
 
 // gallery 모달
 test('gallery — 모달 열기/닫기', async ({ page }) => {
   await page.goto(BASE + '/gallery', { waitUntil: 'networkidle' })
-  await expect(page.locator('.gallery-item').first()).toBeVisible({ timeout: 5000 })
+  const item = page.locator('.container [role="button"]').first()
+  await expect(item).toBeVisible({ timeout: 5000 })
 
-  await page.click('.gallery-item >> nth=0')
+  await item.click()
   await expect(page.locator('.modal-overlay')).toBeVisible()
 
-  await page.click('text=닫기')
+  await page.getByRole('button', { name: '닫기' }).click()
   await expect(page.locator('.modal-overlay')).not.toBeVisible()
 })
 

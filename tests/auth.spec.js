@@ -5,6 +5,16 @@ const BASE = 'http://localhost:8004'
 const LOGIN_EMAIL = 'admin@example.com'
 const LOGIN_PASSWORD = 'password'
 
+// 템플릿 index.html에서 auth.enabled 여부를 읽는다.
+// 리다이렉트/차단 테스트는 auth가 켜진 앱에서만 의미가 있으므로 꺼져 있으면 명시적으로 skip한다.
+let authEnabled = false
+test.beforeAll(async ({ request }) => {
+  const res = await request.get(BASE + '/')
+  const html = await res.text()
+  authEnabled = /auth\s*:\s*\{[^}]*enabled\s*:\s*true/.test(html)
+})
+const requireAuth = () => test.skip(!authEnabled, '템플릿 index.html에서 auth.enabled가 꺼져 있음')
+
 // 로그인 헬퍼
 async function login(page) {
   await page.goto(BASE + '/login', { waitUntil: 'networkidle' })
@@ -23,12 +33,14 @@ async function logout(page) {
 // ── 미인증 상태 ────────────────────────────────────────
 
 test('미인증 — 보호 페이지 접근 시 /login 리다이렉트', async ({ page }) => {
+  requireAuth()
   await logout(page)
   await page.goto(BASE + '/dashboard', { waitUntil: 'networkidle' })
   await expect(page).toHaveURL(/\/login/, { timeout: 5000 })
 })
 
 test('미인증 — admin 페이지 접근 시 /login 리다이렉트', async ({ page }) => {
+  requireAuth()
   await logout(page)
   await page.goto(BASE + '/admin', { waitUntil: 'networkidle' })
   await expect(page).toHaveURL(/\/login/, { timeout: 5000 })
@@ -102,6 +114,7 @@ test('인증 후 — 여러 보호 페이지 연속 이동', async ({ page }) =>
 // ── 로그아웃 후 ───────────────────────────────────────
 
 test('로그아웃 후 — 보호 페이지 다시 차단', async ({ page }) => {
+  requireAuth()
   await login(page)
 
   // 대시보드 접근 가능 확인
@@ -119,6 +132,7 @@ test('로그아웃 후 — 보호 페이지 다시 차단', async ({ page }) => 
 // ── JWT 만료 ───────────────────────────────────────────
 
 test('만료된 토큰 — 보호 페이지 접근 시 /login 리다이렉트', async ({ page }) => {
+  requireAuth()
   // 이미 만료된 JWT 수동 세팅 (exp: 과거 시간)
   const expiredToken = [
     btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' })),

@@ -73,19 +73,27 @@ Claude Code 사용 시 hook이 자동 실행하므로 수동 실행 불필요.
 
 ### 규칙 1-1 — doctor: 편집 직후 정적 피드백
 
-`.vue`를 Write/Edit하면 hook이 scan 후 `bin/doctor.js`를 실행해, 위반이 있으면 **exit 2 + stderr**(`file:line CODE 메시지` + `hint:`)로 돌려준다. 피드백이 오면 hint대로 즉시 고친다. 전체 점검은 `npm run doctor`. 경고(`W_`)는 출력만 하고 막지 않는다.
+`.vue`를 Write/Edit하면 hook이 scan 후 `bin/doctor.js`를 실행한다. 위반·경고가 있으면 **stderr + exit 2**(`file:line CODE message` + `hint:`)로 돌려준다(PostToolUse의 exit 2는 편집을 되돌리지 않고 피드백만 준다). 피드백이 오면 hint대로 즉시 고친다. 전체 점검은 `npm run doctor`. 메시지·hint는 런타임과 같은 영어이고, 문제가 없으면 무출력이다.
 
-| 코드 | 의미 |
-|------|------|
-| `E_SCRIPT_SETUP` / `E_SCRIPT_TS` | `<script setup>` / `lang="ts"` 사용 |
-| `W_STYLE_SCOPED` | `<style scoped>` 사용 |
-| `E_RELATIVE_IMPORT` / `E_BARE_IMPORT` | script 안 `import`/`export … from` (상대/베어) |
-| `E_NO_EXPORT_DEFAULT` | `<script>`에 `export default` 없음 |
-| `E_COMPOSABLES_DIR` | `composables/` 디렉터리 존재 |
-| `E_RESERVED_TAG` | `components/` 파일명이 HTML 표준 태그(`Button.vue` 등) |
-| `E_LOGIN_PAGE_PROTECTED` | auth 활성인데 loginPage/404/error에 `auth: false` 없음 |
+doctor 종료 코드: `0` 문제 없음 또는 경고만(stdout), `3` 위반, `70` doctor 내부 오류. 내부 오류는 위반이 아니므로 hook은 편집을 막지 않고 1줄 안내만 남긴다.
 
-doctor는 오탐이 없는 규칙만 검사한다(미등록 태그, 템플릿 표현식 등은 검사하지 않음).
+코드는 런타임(`package`)과 같은 문제에 같은 이름이다. 레벨은 코드명이 아니라 출력의 `(warn)` 표시로 구분한다.
+
+| 코드 | 레벨 | 의미 |
+|------|------|------|
+| `E_SCRIPT_SETUP` | error | `<script setup>` 사용 |
+| `E_SCRIPT_TS` | error | `lang="ts"`/`tsx` 사용 |
+| `E_STYLE_SCOPED` | warn | `<style scoped>` 사용 |
+| `E_RELATIVE_IMPORT` | error | script 안 상대 경로 `import`/`export … from` |
+| `E_BARE_IMPORT` | error | script 안 베어 지정자 `import`/`export … from` (문자열·템플릿 리터럴·주석 속은 제외) |
+| `E_RESERVED_TAG` | error | pages(라우트 이름)·components(파일명)가 런타임 `HTML_RESERVED` 태그와 동일 (`table.vue`, `Button.vue`) |
+| `E_LOGIN_PAGE_PROTECTED` | error | auth 활성인데 loginPage(미설정 시 `/login`, `/`는 `index`)에 `auth: false` 없음 |
+| `E_NO_EXPORT_DEFAULT` | error | doctor 전용: `<script>`에 `export default` 없음 |
+| `E_COMPOSABLES_DIR` | error | doctor 전용: `composables/` 디렉터리 존재 |
+
+404/error 페이지의 `auth: false` 누락은 검사하지 않는다. 런타임은 보호된 404를 로그인으로 보낼 뿐 루프가 아니고, `error.vue`는 인증 가드를 거치지 않는다.
+
+doctor는 오탐이 없는 규칙만 검사한다(미등록 태그, 템플릿 표현식 등은 검사하지 않음). 확신이 없는 구간은 잡지 않는다.
 
 ### 자주 어기는 규칙 (증상 → 원인 → 수정)
 
@@ -231,8 +239,12 @@ export default router
 
 ```js
 // app/index.html
-VueZero.createApp({ auth: { enabled: true, loginPage: '/login' } })
+vzLoad(function () {
+  VueZero.createApp({ auth: { enabled: true, loginPage: '/login' } })
+})
 ```
+
+`vzLoad`는 index.html이 정의한다. vue → vue-router → vue-zero → utils 순서로 스크립트를 `async=false`로 동적 삽입하고(병렬 다운로드, 순서 실행), 모두 실행된 뒤 콜백을 호출한다. `document.write`는 쓰지 않는다.
 
 ### 동작 방식 — opt-out 방식 (중요)
 

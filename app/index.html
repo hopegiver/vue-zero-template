@@ -7,23 +7,39 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="/assets/css/base.css" rel="stylesheet">
   <!-- localhost 또는 ?vzdev → dev 빌드(상세한 경고/에러), 그 외 → prod 빌드.
-       document.write는 파서를 막고 순서대로 실행되므로 아래 vue-zero.js보다 항상 먼저 로드된다. -->
+       document.write 를 쓰지 않는다(느린 연결에서 Chrome 이 교차 출처 document.write 스크립트를 막을 수 있음).
+       스크립트를 async=false 로 동적 삽입하면 병렬로 받되 삽입 순서대로 실행된다:
+       vue → vue-router → vue-zero → utils. 앱 시작은 마지막 스크립트 실행이 끝난 뒤에 호출된다. -->
   <script>
     (function () {
       var dev = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || /[?&]vzdev\b/.test(location.search)
       var sfx = dev ? '' : '.prod'
-      document.write('<script src="https://unpkg.com/vue@3/dist/vue.global' + sfx + '.js"><\/script>')
-      document.write('<script src="https://unpkg.com/vue-router@4/dist/vue-router.global' + sfx + '.js"><\/script>')
+      var list = [
+        'https://unpkg.com/vue@3/dist/vue.global' + sfx + '.js',
+        'https://unpkg.com/vue-router@4/dist/vue-router.global' + sfx + '.js',
+        '/assets/js/vue-zero.js', // 또는 https://unpkg.com/vue-zero-ai/dist/vue-zero.js
+        '/assets/js/utils.js'
+      ]
+      window.vzLoad = function (boot) {
+        var left = list.length
+        list.forEach(function (src) {
+          var s = document.createElement('script')
+          s.src = src
+          s.async = false
+          s.onload = function () { if (--left === 0) boot() }
+          s.onerror = function () { console.error('[vue-zero] failed to load ' + src) }
+          document.head.appendChild(s)
+        })
+      }
     })()
   </script>
-  <script src="/assets/js/vue-zero.js"></script>
-  <script src="/assets/js/utils.js"></script>
-  <!-- <script src="https://unpkg.com/vue-zero-ai/dist/vue-zero.js"></script> -->
 </head>
 <body>
   <div id="app"></div>
   <script>
-    VueZero.createApp({})
+    vzLoad(function () {
+      VueZero.createApp({})
+    })
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/js/bootstrap.bundle.min.js"></script>
 </body>

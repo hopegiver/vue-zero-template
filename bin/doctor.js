@@ -1,32 +1,84 @@
 #!/usr/bin/env node
-// vue-zero doctor — .vue 정적 검사. 의존성 없음. 문제가 없으면 아무것도 출력하지 않는다.
+// vue-zero doctor — .vue static check. 의존성 없음. 문제가 없으면 아무것도 출력하지 않는다.
 // 오탐 위험이 큰 규칙(미등록 태그, 템플릿 표현식 파싱 등)은 의도적으로 넣지 않는다.
 import { readdirSync, statSync, readFileSync, existsSync } from 'fs'
 import { join, relative, basename, extname, sep } from 'path'
 import { fileURLToPath } from 'url'
 
-const HTML_TAGS = new Set(('a abbr address area article aside audio b base bdi bdo blockquote body br button canvas caption cite code ' +
-  'col colgroup data datalist dd del details dfn dialog div dl dt em embed fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 ' +
-  'head header hr html i iframe img input ins kbd label legend li link main map mark menu meta meter nav noscript object ol optgroup ' +
-  'option output p param picture pre progress q rp rt ruby s samp script section select slot small source span strong style sub ' +
-  'summary sup table tbody td template textarea tfoot th thead time title tr track u ul var video wbr svg path').split(' '))
+// 출처: package/src/core/RouteScanner.ts 의 HTML_RESERVED (런타임과 동일 목록 — 바꾸려면 양쪽을 함께)
+const HTML_RESERVED = new Set([
+  'html','body','head','base','meta','link','style','script','noscript',
+  'template','slot','component',
+  'div','span','p','a','br','hr','img','input','button','select','option',
+  'textarea','form','label','fieldset','legend','table','thead','tbody',
+  'tfoot','tr','th','td','caption','colgroup','col',
+  'ul','ol','li','dl','dt','dd',
+  'h1','h2','h3','h4','h5','h6',
+  'header','footer','main','nav','section','article','aside',
+  'details','summary','dialog','figure','figcaption',
+  'video','audio','source','canvas','svg','iframe','embed','object',
+  'pre','code','blockquote','strong','em','small','sub','sup','mark',
+])
+
+// 런타임(package)과 같은 문제에는 같은 코드. 레벨은 코드명이 아니라 LEVEL 로 구분한다.
+const LEVEL = { E_STYLE_SCOPED: 'warn' }
+const levelOf = (code) => LEVEL[code] || 'error'
 
 const HINTS = {
-  E_SCRIPT_SETUP: '`<script>` + `export default { ... }` (Options API)를 사용하세요.',
-  E_SCRIPT_TS: 'TypeScript는 지원되지 않습니다. `lang` 속성을 제거하고 일반 JS로 작성하세요.',
-  W_STYLE_SCOPED: '`scoped`를 제거하고 클래스명으로 범위를 구분하세요.',
-  E_RELATIVE_IMPORT: '.vue의 script는 Blob URL로 실행되어 import가 불가능합니다. 공유 로직은 assets/js/utils.js의 전역 함수로 두세요.',
-  E_BARE_IMPORT: '.vue에서는 import/export-from을 쓸 수 없습니다. 라이브러리는 index.html의 <script>로 로드하고 전역으로 사용하세요.',
-  E_NO_EXPORT_DEFAULT: '`export default { ... }` 로 컴포넌트 객체를 내보내세요.',
-  E_COMPOSABLES_DIR: 'composables/ 폴더는 쓸 수 없습니다. 함수는 assets/js/utils.js에 추가하세요.',
-  E_RESERVED_TAG: 'HTML 표준 태그와 같은 이름은 컴포넌트로 쓸 수 없습니다. AppButton처럼 접두사를 붙여 파일명을 바꾸세요.',
-  E_LOGIN_PAGE_PROTECTED: "auth 활성 상태에서 이 페이지에 `auth: false`가 없으면 미인증 사용자가 접근/리다이렉트 루프에 빠집니다. `export default { auth: false, ... }` 를 추가하세요.",
+  E_SCRIPT_SETUP: 'Use a plain `<script>` with `export default { ... }` (Options API).',
+  E_SCRIPT_TS: 'TypeScript is not supported. Remove the `lang` attribute and write plain JS.',
+  E_STYLE_SCOPED: 'Remove `scoped`; styles apply globally, so use unique class names.',
+  E_RELATIVE_IMPORT: 'A .vue script runs from a Blob URL, so relative imports fail. Put shared logic in assets/js/utils.js as a global function.',
+  E_BARE_IMPORT: 'import/export-from is not allowed in .vue. Load the library with a <script> tag in index.html and use its global.',
+  E_NO_EXPORT_DEFAULT: 'Export the component object with `export default { ... }`.',
+  E_COMPOSABLES_DIR: 'composables/ is not allowed. Add functions to assets/js/utils.js.',
+  E_RESERVED_TAG: 'The name matches an HTML reserved tag. Rename the file with a prefix (e.g. AppButton, table-page) and update pages.json/components.json.',
+  E_LOGIN_PAGE_PROTECTED: 'With auth enabled, the login page must be public, otherwise the redirect to it loops. Add `auth: false` to `export default { ... }`.',
 }
 
-// 주석을 같은 길이의 공백(개행 유지)으로 치환 — 라인 번호 보존
-function blank(s) {
-  return s.replace(/\/\*[\s\S]*?\*\/|(^|[^:'"`\\])\/\/[^\n]*/g, (m, p) =>
-    (p || '') + (m.slice((p || '').length)).replace(/[^\n]/g, ' '))
+// 주석/문자열/템플릿 리터럴을 구분해 읽는다.
+// code: 주석을 같은 길이의 공백으로 바꾼 텍스트(개행 유지 → 라인 번호 보존, 문자열은 그대로)
+// live[i]: i번째 문자가 실제 코드 위치(주석·문자열·템플릿 리터럴 본문 밖)이면 true
+// 판단이 애매한 구간(정규식 리터럴 등)에서는 live=false 쪽으로 기운다 — 미탐이 오탐보다 낫다.
+export function lex(src) {
+  const n = src.length
+  const out = src.split('')
+  const live = new Uint8Array(n)
+  const stack = [] // 템플릿 ${ } 안의 중괄호 깊이
+  let i = 0, last = '' // last: 직전 의미 있는 코드 문자
+  const blankRange = (a, b) => { for (let k = a; k < b; k++) if (out[k] !== '\n') out[k] = ' ' }
+  const regexOk = () => last === '' || '(,=:[!&|?{};+-*%<>~^'.includes(last)
+  while (i < n) {
+    const c = src[i], d = src[i + 1]
+    if (c === '/' && d === '/') { const e = src.indexOf('\n', i); const end = e < 0 ? n : e; blankRange(i, end); i = end; continue }
+    if (c === '/' && d === '*') { const e = src.indexOf('*/', i + 2); const end = e < 0 ? n : e + 2; blankRange(i, end); i = end; continue }
+    if (c === '"' || c === "'") {
+      let j = i + 1
+      while (j < n && src[j] !== c && src[j] !== '\n') j += src[j] === '\\' ? 2 : 1
+      i = j + 1; last = c; continue
+    }
+    if (c === '`' || (c === '}' && stack.length && stack[stack.length - 1] === 0)) {
+      if (c === '}') stack.pop()
+      let j = i + 1
+      for (; j < n; j++) {
+        if (src[j] === '\\') { j++; continue }
+        if (src[j] === '`') { j++; break }
+        if (src[j] === '$' && src[j + 1] === '{') { stack.push(0); j += 2; break }
+      }
+      i = j; last = '`'; continue
+    }
+    if (c === '/' && regexOk()) {
+      let j = i + 1, cls = false
+      while (j < n && src[j] !== '\n' && (cls || src[j] !== '/')) { if (src[j] === '\\') j++; else if (src[j] === '[') cls = true; else if (src[j] === ']') cls = false; j++ }
+      i = j + 1; last = '/'; continue
+    }
+    if (c === '{' && stack.length) stack[stack.length - 1]++
+    if (c === '}' && stack.length) stack[stack.length - 1]--
+    live[i] = 1
+    if (!/\s/.test(c)) last = c
+    i++
+  }
+  return { code: out.join(''), live }
 }
 
 function lineOf(text, index) {
@@ -35,10 +87,20 @@ function lineOf(text, index) {
   return n
 }
 
+// 페이지 파일 → 런타임 라우트 이름 (RouteScanner.fileToRoute 와 같은 규칙)
+const pageRouteName = (noExt) => noExt.replace(/\//g, '-').replace(/[\[\]\.]/g, '')
+
+// loginPage('/login', '/', '/auth/login/') → 해당하는 pages 파일 후보 (nested index 포함)
+export function loginPageFiles(loginPage = '/login') {
+  const p = String(loginPage).split(/[?#]/)[0].replace(/^\/+|\/+$/g, '')
+  return p === '' ? ['pages/index.vue'] : [`pages/${p}.vue`, `pages/${p}/index.vue`]
+}
+
 // ctx: { authEnabled: bool, publicPages: string[] } / rel: app 기준 상대경로(예: pages/login.vue)
+// publicPages 는 loginPage 파일뿐이다.
 export function checkSource(file, source, ctx = {}, rel = file) {
   const out = []
-  const add = (line, code, message) => out.push({ file, line, code, message, hint: HINTS[code] })
+  const add = (line, code, message) => out.push({ file, line, code, level: levelOf(code), message, hint: HINTS[code] })
   const relNorm = rel.split(sep).join('/')
 
   const scriptRe = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi
@@ -47,51 +109,59 @@ export function checkSource(file, source, ctx = {}, rel = file) {
     hasScript = true
     const attrs = m[1]
     const line = lineOf(source, m.index)
-    if (/(^|\s)setup(\s|=|$)/i.test(attrs)) add(line, 'E_SCRIPT_SETUP', '`<script setup>`은 지원되지 않습니다.')
-    if (/\blang\s*=\s*["']?(ts|tsx)\b/i.test(attrs)) add(line, 'E_SCRIPT_TS', 'TypeScript(`lang="ts"`)는 지원되지 않습니다.')
+    if (/(^|\s)setup(\s|=|$)/i.test(attrs)) add(line, 'E_SCRIPT_SETUP', '`<script setup>` is not supported.')
+    if (/\blang\s*=\s*["']?(ts|tsx)\b/i.test(attrs)) add(line, 'E_SCRIPT_TS', 'TypeScript (`lang="ts"`) is not supported.')
     const bodyStart = m.index + m[0].indexOf('>') + 1
-    const code = blank(m[2])
+    const { code, live } = lex(m[2])
     const importRe = /^[ \t]*import\s*(?:[\w$*{][^'";]*?\bfrom\s*)?(['"])([^'"\n]+)\1/gm
     let im
+    const report = (_, text, spec) => add(lineOf(source, bodyStart + im.index + im[0].search(/\S/)),
+      /^[./]/.test(spec) ? 'E_RELATIVE_IMPORT' : 'E_BARE_IMPORT', text(spec))
     while ((im = importRe.exec(code))) {
-      const rel2 = /^[./]/.test(im[2])
-      add(lineOf(source, bodyStart + im.index + im[0].search(/\S/)), rel2 ? 'E_RELATIVE_IMPORT' : 'E_BARE_IMPORT',
-        `import '${im[2]}' 는 .vue에서 사용할 수 없습니다.`)
+      if (!live[im.index + im[0].search(/\S/)]) continue // 문자열/템플릿 리터럴 안
+      report(null, (sp) => `import '${sp}' cannot be used in .vue.`, im[2])
     }
     const reexpRe = /^[ \t]*export\s*(?:\*|\{[^}]*\})\s*from\s*(['"])([^'"\n]+)\1/gm
     while ((im = reexpRe.exec(code))) {
-      add(lineOf(source, bodyStart + im.index + im[0].search(/\S/)), /^[./]/.test(im[2]) ? 'E_RELATIVE_IMPORT' : 'E_BARE_IMPORT',
-        `export ... from '${im[2]}' 는 .vue에서 사용할 수 없습니다.`)
+      if (!live[im.index + im[0].search(/\S/)]) continue
+      report(null, (sp) => `export ... from '${sp}' cannot be used in .vue.`, im[2])
     }
-    if (/^[ \t]*export\s+default\b/m.test(code)) hasDefault = true
+    const dm = /^[ \t]*export\s+default\b/m.exec(code)
+    if (dm && live[dm.index + dm[0].search(/\S/)]) hasDefault = true
   }
-  if (hasScript && !hasDefault) add(1, 'E_NO_EXPORT_DEFAULT', '<script>에 `export default`가 없습니다.')
+  if (hasScript && !hasDefault) add(1, 'E_NO_EXPORT_DEFAULT', '`export default` is missing in <script>.')
 
   const styleRe = /<style\b[^>]*\bscoped\b[^>]*>/gi
-  while ((m = styleRe.exec(source))) add(lineOf(source, m.index), 'W_STYLE_SCOPED', '`<style scoped>`는 사용하지 않습니다.')
+  while ((m = styleRe.exec(source))) add(lineOf(source, m.index), 'E_STYLE_SCOPED', '`<style scoped>` is not supported; styles apply globally.')
 
-  if (/^components\//.test(relNorm)) {
-    const base = basename(relNorm, '.vue').toLowerCase()
-    if (HTML_TAGS.has(base)) add(1, 'E_RESERVED_TAG', `파일명 '${basename(relNorm)}'이(가) HTML 표준 태그 '${base}'와 충돌합니다.`)
-  }
+  // 예약 태그: 런타임은 pages 의 라우트 이름을 검사한다. components 는 파일명 그대로 태그가 된다.
+  let tagName = null
+  if (/^pages\//.test(relNorm)) tagName = pageRouteName(relNorm.replace(/^pages\//, '').replace(/\.vue$/, ''))
+  else if (/^components\//.test(relNorm)) tagName = basename(relNorm, '.vue').toLowerCase()
+  if (tagName && HTML_RESERVED.has(tagName)) add(1, 'E_RESERVED_TAG', `File name '${basename(relNorm)}' conflicts with the HTML reserved tag '${tagName}'.`)
 
+  // 런타임 근거(package/src/vue-zero.ts beforeEach): loginPage 가 보호 상태일 때만 E_LOGIN_PAGE_PROTECTED(리다이렉트 루프).
+  // 404 가 보호 상태여도 로그인으로 보낼 뿐 루프가 아니고, error.vue 는 가드를 거치지 않으므로 둘은 검사하지 않는다.
   if (ctx.authEnabled && (ctx.publicPages || []).includes(relNorm)) {
-    if (!/\bauth\s*:\s*false\b/.test(blank(source))) {
+    if (!/\bauth\s*:\s*false\b/.test(lex(source).code)) {
       const d = source.search(/export\s+default/)
-      add(d < 0 ? 1 : lineOf(source, d), 'E_LOGIN_PAGE_PROTECTED', `auth가 활성인데 ${relNorm}에 \`auth: false\`가 없습니다.`)
+      add(d < 0 ? 1 : lineOf(source, d), 'E_LOGIN_PAGE_PROTECTED', `Auth is enabled but ${relNorm} (the loginPage) has no \`auth: false\`.`)
     }
   }
   return out
 }
 
 export function loadContext(appDir) {
-  const ctx = { authEnabled: false, publicPages: ['pages/404.vue', 'pages/error.vue'] }
+  const ctx = { authEnabled: false, publicPages: [] }
   const idx = join(appDir, 'index.html')
   if (existsSync(idx)) {
     const html = readFileSync(idx, 'utf-8').replace(/<!--[\s\S]*?-->/g, '')
-    ctx.authEnabled = /\bauth\s*:\s*\{[^}]*\benabled\s*:\s*true\b/.test(blank(html))
-    const lp = html.match(/\bloginPage\s*:\s*['"]([^'"]+)['"]/)
-    if (lp) ctx.publicPages.push('pages/' + lp[1].replace(/^\/+/, '') + '.vue')
+    // 인라인 <script> 만 모아 주석·문자열을 구분해 읽는다 (HTML 본문의 따옴표/URL 에 흔들리지 않게)
+    const js = [...html.matchAll(/<script\b(?![^>]*\bsrc\b)[^>]*>([\s\S]*?)<\/script>/gi)].map(x => x[1]).join('\n')
+    const code = lex(js).code
+    ctx.authEnabled = /\bauth\s*:\s*\{[^}]*\benabled\s*:\s*true\b/.test(code)
+    const lp = code.match(/\bloginPage\s*:\s*['"]([^'"]*)['"]/)
+    ctx.publicPages = loginPageFiles(lp ? lp[1] : '/login') // 런타임 기본값 /login (AuthGuard)
   }
   return ctx
 }
@@ -111,7 +181,7 @@ export function composablesIssues(appDir) {
     for (const e of readdirSync(dir)) {
       const full = join(dir, e)
       if (!statSync(full).isDirectory() || e === 'node_modules') continue
-      if (e === 'composables') out.push({ file: relative(process.cwd(), full) || full, line: 1, code: 'E_COMPOSABLES_DIR', message: 'composables/ 디렉터리가 존재합니다.', hint: HINTS.E_COMPOSABLES_DIR })
+      if (e === 'composables') out.push({ file: relative(process.cwd(), full) || full, line: 1, code: 'E_COMPOSABLES_DIR', level: 'error', message: 'A composables/ directory exists.', hint: HINTS.E_COMPOSABLES_DIR })
       walkDirs(full)
     }
   }
@@ -120,7 +190,7 @@ export function composablesIssues(appDir) {
 }
 
 export function format(issues) {
-  return issues.map(i => `${i.file}:${i.line} ${i.code} ${i.message}\n  hint: ${i.hint}`).join('\n')
+  return issues.map(i => `${i.file}:${i.line} ${i.code}${i.level === 'warn' ? ' (warn)' : ''} ${i.message}\n  hint: ${i.hint}`).join('\n')
 }
 
 export function run(args, appDir = 'app') {
@@ -141,12 +211,21 @@ export function run(args, appDir = 'app') {
   return issues
 }
 
+// 종료 코드: 0 = 문제 없음/경고만, 3 = 위반(error 레벨 있음), 70 = doctor 내부 오류(위반 아님).
+// (Node 의 미처리 예외는 1 이므로 위반과 구분되도록 위반을 3 으로 둔다.)
+export const EXIT_VIOLATION = 3
+export const EXIT_INTERNAL = 70
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const issues = run(process.argv.slice(2))
-  if (issues.length) {
-    const text = format(issues) + '\n'
-    const hasError = issues.some(i => i.code.startsWith('E_'))
-    ;(hasError ? process.stderr : process.stdout).write(text)
-    process.exit(hasError ? 1 : 0)
+  try {
+    const issues = run(process.argv.slice(2))
+    if (issues.length) {
+      const hasError = issues.some(i => i.level === 'error')
+      ;(hasError ? process.stderr : process.stdout).write(format(issues) + '\n')
+      process.exit(hasError ? EXIT_VIOLATION : 0)
+    }
+  } catch (e) {
+    process.stderr.write(`doctor internal error: ${e && e.stack || e}\n`)
+    process.exit(EXIT_INTERNAL)
   }
 }

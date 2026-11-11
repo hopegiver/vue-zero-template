@@ -29,7 +29,7 @@ const HINTS = {
   E_SCRIPT_TS: 'TypeScript is not supported. Remove the `lang` attribute and write plain JS.',
   E_STYLE_SCOPED: 'Remove `scoped`; styles apply globally, so use unique class names.',
   E_RELATIVE_IMPORT: 'A .vue script runs from a Blob URL, so relative imports fail. Put shared logic in assets/js/utils.js as a global function.',
-  E_BARE_IMPORT: 'import/export-from is not allowed in .vue. Load the library with a <script> tag in index.html and use its global.',
+  E_BARE_IMPORT: 'import/export-from is not allowed in .vue. Add the library URL to the `list` array in app/index.html (vzLoad runs it in order, after Vue) and use its global.',
   E_NO_EXPORT_DEFAULT: 'Export the component object with `export default { ... }`.',
   E_COMPOSABLES_DIR: 'composables/ is not allowed. Add functions to assets/js/utils.js.',
   E_RESERVED_TAG: 'The name matches an HTML reserved tag. Rename the file with a prefix (e.g. AppButton, table-page) and update pages.json/components.json.',

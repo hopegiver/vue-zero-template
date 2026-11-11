@@ -100,7 +100,7 @@ doctor는 오탐이 없는 규칙만 검사한다(미등록 태그, 템플릿 �
 | 증상 | 원인 | 수정 |
 |------|------|------|
 | 컴포넌트가 빈 화면 / 로드 실패 | `<script setup>`·`lang="ts"`·`export default` 누락 | Options API + `export default {}` |
-| `import` 줄에서 SyntaxError | `.vue`는 Blob URL로 실행되어 모듈 import 불가 | 전역 `utils.js` 함수 또는 `<script>` 전역 사용 |
+| `import` 줄에서 SyntaxError | `.vue`는 Blob URL로 실행되어 모듈 import 불가 | 전역 `utils.js` 함수, 또는 `index.html`의 `list` 배열에 라이브러리 URL을 추가해 그 전역 사용 |
 | 태그를 컴포넌트로 못 씀 / 네이티브 요소로 렌더 | 파일명이 `Button` 등 HTML 태그와 동일 | `AppButton`처럼 접두사 |
 | 로그인 페이지 무한 리다이렉트 | auth 활성인데 `auth: false` 없음 | 해당 페이지에 `auth: false` |
 | 새 페이지/컴포넌트가 안 뜸 | scan 미실행 | `npm run scan` |
@@ -178,7 +178,7 @@ vue-zero는 컴포넌트를 **지연 로딩**합니다. 앱 시작 시 fetch하�
 - `pages/404.vue` → 자동 catch-all. pages.json에 등록하지 않음. 인증 사용 시 `auth: false` 필수
 - `title: '페이지명'` → document.title 자동 설정
 - **`composables/` 사용 금지** — vue-zero는 Blob URL로 `.vue`를 실행하므로 ES module import가 불가능. Vue composable 패턴은 동작하지 않는다.
-- **유틸 함수는 `assets/js/utils.js`에 추가** — `index.html`에서 `<script>`로 로드되어 전역 함수로 사용. import 불필요.
+- **유틸 함수는 `assets/js/utils.js`에 추가** — `index.html`의 `list`(vzLoad가 Vue → vue-router → vue-zero → utils 순서로 실행)로 로드되어 전역 함수로 사용. Vue에 의존하는 외부 라이브러리도 정적 `<script>` 태그가 아니라 이 `list`에 추가한다(정적 태그는 Vue보다 먼저 실행될 수 있음). import 불필요.
 
 ```js
 // .vue에서 import 없이 바로 사용

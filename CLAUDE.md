@@ -49,8 +49,9 @@ vue-zero-template/
 
 ```bash
 wrangler dev     # 로컬 개발 (http://localhost:8004)
-wrangler deploy  # 프로덕션 배포
-npm run scan     # pages.json, components.json, _registry.js 갱신
+npm run deploy   # 프로덕션 배포 = scan → wrangler deploy (매니페스트를 항상 최신으로 올린다)
+npm run scan     # pages.json, components.json, vz-manifest.json, _registry.js 갱신
+npm run scan -- --check  # 파일을 쓰지 않고 vz-manifest.json 이 최신인지만 검사 (E_MANIFEST_STALE, 위반 시 exit 3)
 npm run doctor   # .vue 정적 검사 (규칙 위반 시 file:line CODE + hint 출력, 없으면 무출력)
 npm run test:unit # doctor 단위 테스트 (node --test)
 npm test         # Playwright E2E (정기 회귀 테스트)
@@ -90,6 +91,7 @@ doctor 종료 코드: `0` 문제 없음 또는 경고만(stdout), `3` 위반, `7
 | `E_LOGIN_PAGE_PROTECTED` | error | auth 활성인데 loginPage(미설정 시 `/login`, `/`는 `index`)에 `auth: false` 없음 |
 | `E_NO_EXPORT_DEFAULT` | error | doctor 전용: `<script>`에 `export default` 없음 |
 | `E_COMPOSABLES_DIR` | error | doctor 전용: `composables/` 디렉터리 존재 |
+| `E_MANIFEST_STALE` | error | doctor·`scan --check` 전용(프로젝트 전체 검사에서만): `vz-manifest.json` 의 해시·목록이 실제 파일과 다름, 또는 `manifest` 옵션을 켰는데 파일이 없음 |
 
 404/error 페이지의 `auth: false` 누락은 검사하지 않는다. 런타임은 보호된 404를 로그인으로 보낼 뿐 루프가 아니고, `error.vue`는 인증 가드를 거치지 않는다.
 
@@ -104,6 +106,8 @@ doctor는 오탐이 없는 규칙만 검사한다(미등록 태그, 템플릿 �
 | 태그를 컴포넌트로 못 씀 / 네이티브 요소로 렌더 | 파일명이 `Button` 등 HTML 태그와 동일 | `AppButton`처럼 접두사 |
 | 로그인 페이지 무한 리다이렉트 | auth 활성인데 `auth: false` 없음 | 해당 페이지에 `auth: false` |
 | 새 페이지/컴포넌트가 안 뜸 | scan 미실행 | `npm run scan` |
+| 배포 후에도 옛 `.vue` 가 보임 / 새 페이지가 404 | `vz-manifest.json` 이 오래됨(scan 없이 `wrangler deploy` 직접 실행, 훅 미동작 환경에서 편집) → 브라우저는 매니페스트의 해시 키로 캐시한 옛 파일을 계속 씀. `npm run doctor`/`scan -- --check` 가 `E_MANIFEST_STALE` | `npm run scan` 후 `npm run deploy` |
+| 콘솔에 `E_MANIFEST_FETCH` 경고 | 배포물에 `vz-manifest.json` 이 없거나 JSON 이 깨짐(앱은 pages.json 으로 폴백해 동작은 함, 느릴 뿐) | `npm run scan`, `app/vz-manifest.json` 이 배포되는지 확인 |
 | 같은 페이지에서 `/users/1`→`/users/2`로 가도 데이터 그대로 | `mounted`에서만 조회 (컴포넌트 재사용) | 아래 `watch` 규칙 |
 | 배포 후에도 옛 화면 | 브라우저/CDN의 HTTP 캐시 | 아래 HTTP 캐시 |
 | 콘솔 경고가 안 보임 | prod 빌드 로드 | localhost는 자동 dev 빌드. 다른 호스트는 `?vzdev` 추가 |
@@ -140,6 +144,16 @@ function resetAppState() { appState.user = null }
 
 `.vue`에서는 `data() { return { state: appState } }`로 노출하면 반응형으로 갱신된다.
 **로그아웃·토큰 만료 시** `localStorage.removeItem('token')`과 함께 `resetAppState()`로 전역 상태를 반드시 비운다(남아 있으면 다음 로그인 사용자에게 이전 데이터가 보임). 사용자별 목록 등 페이지 로컬 데이터는 페이지 이동 시 컴포넌트가 새로 만들어지므로 자동 초기화된다.
+
+### 매니페스트(`vz-manifest.json`)와 배포
+
+`npm run scan` 이 `app/vz-manifest.json` 을 만든다(형식 v1). 페이지·컴포넌트 목록, `404`/`error` 존재 여부, `.vue` 마다 내용 해시(sha256 앞 10자), 페이지별 레이아웃·사용 컴포넌트(`deps`)가 들어 있다. `index.html` 의 `createApp({ manifest: true })` 가 이를 쓴다. 효과:
+- 부팅 때 파일 1개(항상 재검증)로 `pages.json`·`components.json`·404/error 확인을 대신한다.
+- 운영 호스트에서는 해시가 같은 `.vue` 를 브라우저 Cache Storage 에서 읽어, 재방문 때 `.vue` 네트워크 요청이 0건이다. 해시가 바뀐 파일만 다시 받는다. 서버의 `_headers`/캐시 설정은 필요 없다.
+- localhost 와 `?vzdev` 에서는 해시 캐시를 쓰지 않는다(편집 중 stale 방지).
+- 매니페스트가 없거나 틀려도 앱은 매니페스트 없이 동작한다(요청이 늘 뿐).
+
+**배포 전 반드시 scan**: 매니페스트가 실제 파일과 다르면 운영에서 옛 소스가 캐시에서 나갈 수 있다. `npm run deploy` 는 scan → `wrangler deploy` 순으로 실행하므로 이 명령으로 배포한다(`wrangler deploy` 를 직접 실행하지 않는다). 훅이 `.vue` 편집마다 scan 을 돌려도, 훅이 없는 환경·터미널 편집·git 병합 뒤에는 어긋날 수 있다. `npm run scan -- --check` 는 쓰기 없이 검사만 한다.
 
 ### HTTP 캐시와 배포
 

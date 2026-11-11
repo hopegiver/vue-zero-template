@@ -110,3 +110,52 @@ test('pages 디렉토리가 없으면 매니페스트를 만들지 않는다 (se
     assert.throws(() => read(join(dir, 'app', 'vz-manifest.json')))
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
+
+// ── scan --check / E_MANIFEST_STALE ─────────────────────────────────────────
+test('scan --check: 최신이면 무출력 exit 0, .vue 를 고치면 E_MANIFEST_STALE exit 3 이고 파일은 쓰지 않는다', () => {
+  const dir = sandbox()
+  try {
+    runScan(dir)
+    const fresh = runScan(dir, '--check')
+    assert.equal(fresh.status, 0, fresh.stderr)
+    assert.equal(fresh.stdout + fresh.stderr, '')
+    const before = read(join(dir, 'app', 'vz-manifest.json'))
+    writeFileSync(join(dir, 'app', 'components', 'Avatar.vue'), read(join(dir, 'app', 'components', 'Avatar.vue')) + '\n<!-- edited -->\n')
+    const stale = runScan(dir, '--check')
+    assert.equal(stale.status, 3)
+    assert.match(stale.stderr, /E_MANIFEST_STALE/)
+    assert.match(stale.stderr, /components\/Avatar\.vue/)
+    assert.match(stale.stderr, /hint: .*npm run scan/)
+    assert.equal(read(join(dir, 'app', 'vz-manifest.json')), before) // --check 는 읽기 전용
+    assert.equal(runScan(dir).status, 0) // scan 이 갱신하면
+    assert.equal(runScan(dir, '--check').status, 0) // 다시 통과
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+})
+
+test('scan --check: 파일 추가·삭제도 stale, 매니페스트가 아예 없으면 옵트인 앱에서만 stale', () => {
+  const dir = sandbox()
+  try {
+    assert.equal(runScan(dir, '--check').status, 0) // 매니페스트 없음 + index.html 없음 = 옵트인 아님
+    put(dir, 'app/index.html', '<script>VueZero.createApp({ manifest: true })</script>')
+    const missing = runScan(dir, '--check')
+    assert.equal(missing.status, 3)
+    assert.match(missing.stderr, /E_MANIFEST_STALE.*missing/s)
+    runScan(dir)
+    assert.equal(runScan(dir, '--check').status, 0)
+    put(dir, 'app/pages/newpage.vue', sfc('<div/>'))
+    const added = runScan(dir, '--check')
+    assert.equal(added.status, 3)
+    assert.match(added.stderr, /pages\/newpage\.vue/)
+    rmSync(join(dir, 'app', 'pages', 'newpage.vue'))
+    runScan(dir)
+    rmSync(join(dir, 'app', 'components', 'Avatar.vue'))
+    const removed = runScan(dir, '--check')
+    assert.equal(removed.status, 3)
+    assert.match(removed.stderr, /components\/Avatar\.vue/)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+})
+
+test('package.json deploy 는 scan 을 먼저 돌린 뒤 wrangler deploy (scan 실패 시 배포하지 않음)', () => {
+  const pkg = JSON.parse(read(join(here, '..', 'package.json')))
+  assert.match(pkg.scripts.deploy, /^(npm run scan|node bin\/scan\.js) && wrangler deploy$/)
+})

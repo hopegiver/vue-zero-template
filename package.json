@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "npm run scan && wrangler deploy",
     "scan": "node bin/scan.js",
     "doctor": "node bin/doctor.js",
     "test:unit": "node --test bin/doctor.test.js bin/scan.test.js",

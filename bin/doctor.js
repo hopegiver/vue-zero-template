@@ -4,6 +4,7 @@
 import { readdirSync, statSync, readFileSync, existsSync } from 'fs'
 import { join, relative, basename, extname, sep } from 'path'
 import { fileURLToPath } from 'url'
+import { manifestIssues } from './manifest.js'
 
 // 출처: package/src/core/RouteScanner.ts 의 HTML_RESERVED (런타임과 동일 목록 — 바꾸려면 양쪽을 함께)
 const HTML_RESERVED = new Set([
@@ -152,7 +153,7 @@ export function checkSource(file, source, ctx = {}, rel = file) {
 }
 
 export function loadContext(appDir) {
-  const ctx = { authEnabled: false, publicPages: [] }
+  const ctx = { authEnabled: false, publicPages: [], manifestEnabled: false }
   const idx = join(appDir, 'index.html')
   if (existsSync(idx)) {
     const html = readFileSync(idx, 'utf-8').replace(/<!--[\s\S]*?-->/g, '')
@@ -160,6 +161,7 @@ export function loadContext(appDir) {
     const js = [...html.matchAll(/<script\b(?![^>]*\bsrc\b)[^>]*>([\s\S]*?)<\/script>/gi)].map(x => x[1]).join('\n')
     const code = lex(js).code
     ctx.authEnabled = /\bauth\s*:\s*\{[^}]*\benabled\s*:\s*true\b/.test(code)
+    ctx.manifestEnabled = /\bmanifest\s*:\s*(?:true\b|['"])/.test(code)
     const lp = code.match(/\bloginPage\s*:\s*['"]([^'"]*)['"]/)
     ctx.publicPages = loginPageFiles(lp ? lp[1] : '/login') // 런타임 기본값 /login (AuthGuard)
   }
@@ -207,7 +209,10 @@ export function run(args, appDir = 'app') {
     const rel = relative(appDir, f)
     issues.push(...checkSource(relative(process.cwd(), f) || f, readFileSync(f, 'utf-8'), ctx, rel))
   }
-  if (project) issues.push(...composablesIssues(appDir))
+  if (project) {
+    issues.push(...composablesIssues(appDir))
+    issues.push(...manifestIssues(appDir, ctx.manifestEnabled)) // E_MANIFEST_STALE (doctor/scan --check 전용 코드)
+  }
   return issues
 }
 

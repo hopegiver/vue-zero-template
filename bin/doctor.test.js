@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { checkSource, run, format } from './doctor.js'
+import { cpSync, readFileSync, existsSync } from 'node:fs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const OK = `<template><div>ok</div></template>\n<script>\nexport default {\n  data() { return {} }\n}\n</script>\n`
@@ -124,4 +125,33 @@ test('템플릿 앱(app/) 자체는 0건 + CLI는 무출력 exit 0', () => {
   assert.deepEqual(run([], join(cwd, 'app')), [])
   const p = spawnSync('node', ['bin/doctor.js'], { cwd, encoding: 'utf-8' })
   assert.equal(p.status, 0); assert.equal(p.stdout + p.stderr, '')
+})
+
+test('E_MANIFEST_STALE: 최신 매니페스트는 0건, .vue 하나를 고치면 프로젝트 검사에서 검출 (코드표는 CLAUDE.md 와 일치)', () => {
+  const d = mkdtempSync(join(tmpdir(), 'doctor-'))
+  try {
+    cpSync(join(here, '..', 'tests', 'fixtures', 'manifest-golden', 'app'), join(d, 'app'), { recursive: true })
+    writeFileSync(join(d, 'app/index.html'), '<script>VueZero.createApp({ manifest: true })</script>')
+    const scan = spawnSync('node', [join(here, 'scan.js'), 'app'], { cwd: d, encoding: 'utf-8' })
+    assert.equal(scan.status, 0, scan.stderr)
+    const app = join(d, 'app')
+    assert.deepEqual(run([app], app).filter(i => i.code === 'E_MANIFEST_STALE'), [])
+    writeFileSync(join(app, 'components/Avatar.vue'), readFileSync(join(app, 'components/Avatar.vue'), 'utf-8') + '\n<!-- edit -->\n')
+    const r = run([app], app).filter(i => i.code === 'E_MANIFEST_STALE')
+    assert.equal(r.length, 1)
+    assert.equal(r[0].level, 'error')
+    assert.match(r[0].message, /components\/Avatar\.vue/)
+    assert.match(format(r), /hint: .*npm run scan/)
+    // 개별 파일 검사(훅 경로)는 scan 직후라 매니페스트를 보지 않는다
+    assert.deepEqual(run([join(app, 'components/Avatar.vue')], app).filter(i => i.code === 'E_MANIFEST_STALE'), [])
+    const cli = spawnSync('node', [join(here, 'doctor.js')], { cwd: d, encoding: 'utf-8' })
+    assert.equal(cli.status, 3); assert.match(cli.stderr, /E_MANIFEST_STALE/)
+  } finally { rmSync(d, { recursive: true, force: true }) }
+  assert.match(readFileSync(join(here, '..', 'CLAUDE.md'), 'utf-8'), /\| `E_MANIFEST_STALE` \| error \|/)
+})
+test('템플릿 앱은 index.html 이 manifest 를 켜고 있고 scan 결과가 최신이다 (STALE 0건)', () => {
+  const html = readFileSync(join(here, '..', 'app/index.html'), 'utf-8')
+  assert.match(html, /createApp\(\{\s*manifest:\s*true\s*\}\)/)
+  assert.deepEqual(run([], join(here, '..', 'app')).filter(i => i.code === 'E_MANIFEST_STALE'), [])
+  assert.ok(existsSync(join(here, '..', 'app/vz-manifest.json')))
 })

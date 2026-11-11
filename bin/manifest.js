@@ -60,15 +60,32 @@ function scriptOf(src) {
   return end === -1 ? '' : src.slice(start, end)
 }
 
-// 'default' | '<이름>' | false | undefined(판정 불가). 주석은 무시, layout 키가 2번 이상이거나 리터럴이 아니면 판정 불가
+// 'default' | '<이름>' | false | undefined(판정 불가). 주석은 무시, `export default {` 객체의 최상위 `layout:` 키만 본다(data()·중첩 객체의 키는 무시). 최상위 키가 2번 이상이거나 리터럴이 아니거나 `export default {` 를 못 찾으면 판정 불가
 function layoutOf(script) {
   const code = script.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/[^\n]*/g, '$1')
-  const keys = code.match(/\blayout\s*:/g)
-  if (!keys) return 'default'
-  if (keys.length > 1) return undefined
-  const m = /\blayout\s*:\s*(?:(false)|'([^'\\\n]*)'|"([^"\\\n]*)")\s*(?=[,}\r\n])/.exec(code)
-  if (!m) return undefined
-  return m[1] ? false : (m[2] ?? m[3])
+  const start = /\bexport\s+default\s*\{/.exec(code)
+  if (!start) return /\blayout\s*:/.test(code) ? undefined : 'default'
+  const keys = []
+  let depth = 0
+  let i = start.index + start[0].length - 1
+  for (; i < code.length; i++) {
+    const c = code[i]
+    if (c === "'" || c === '"' || c === '`') {
+      for (i++; i < code.length && code[i] !== c; i++) if (code[i] === '\\') i++
+    } else if ('{[('.includes(c)) depth++
+    else if ('}])'.includes(c)) { if (--depth === 0) break }
+    else if (depth === 1 && c === 'l' && !/[\w$.]/.test(code[i - 1])) {
+      const k = /layout\s*:/y
+      k.lastIndex = i
+      if (k.test(code)) keys.push(i)
+    }
+  }
+  if (i >= code.length || keys.length > 1) return undefined
+  if (!keys.length) return 'default'
+  const lit = /layout\s*:\s*(?:(false)|'([^'\\\n]*)'|"([^"\\\n]*)")\s*(?=[,}\r\n])/y
+  lit.lastIndex = keys[0]
+  const m = lit.exec(code)
+  return m ? (m[1] ? false : m[2] ?? m[3]) : undefined
 }
 
 export function buildManifest(appDir) {

@@ -84,19 +84,27 @@ test('deps: 전이 폐포 · 순환 종료 · 레이아웃 컴포넌트 포함 �
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
 
-test('layout 판정: 큰따옴표 · 주석 처리된 layout · 키 2회 등장(판정 불가)', () => {
+test('layout 판정: 큰따옴표 · 주석 처리된 layout · 최상위 키 2회(판정 불가) · data() 안의 layout 키 무시', () => {
   const dir = sandbox(false)
   try {
     put(dir, 'app/pages/a.vue', sfc('<div/>', 'export default {\n  layout: "x",\n}'))
     put(dir, 'app/pages/b.vue', sfc('<div/>', "export default {\n  // layout: 'nope'\n  data() { return {} }\n}"))
     put(dir, 'app/pages/c.vue', sfc('<div/>', "export default {\n  layout: 'p',\n  data() { return { layout: 'q' } }\n}"))
     put(dir, 'app/pages/d.vue', '<template><div/></template>\n')
+    put(dir, 'app/pages/e.vue', sfc('<div/>', "export default {\n  data() { return { layout: 'q' } }\n}"))
+    put(dir, 'app/pages/f.vue', sfc('<div/>', "export default Vue.defineComponent({ layout: 'q' })"))
+    put(dir, 'app/pages/g.vue', sfc('<div/>', "export default {\n  data() { return { s: '{' } },\n  layout: 'z',\n}"))
+    put(dir, 'app/pages/h.vue', sfc('<div/>', "export default {\n  layout: 'p',\n  layout: false,\n}"))
     runScan(dir)
     const m = manifestOf(dir)
     assert.equal(m.deps['pages/a.vue'].layout, 'x')
     assert.equal(m.deps['pages/b.vue'].layout, 'default')
-    assert.equal('pages/c.vue' in m.deps, false)
+    assert.equal(m.deps['pages/c.vue'].layout, 'p')
     assert.equal(m.deps['pages/d.vue'].layout, 'default')
+    assert.equal(m.deps['pages/e.vue'].layout, 'default')
+    assert.equal('pages/f.vue' in m.deps, false)
+    assert.equal(m.deps['pages/g.vue'].layout, 'z')
+    assert.equal('pages/h.vue' in m.deps, false)
     assert.equal(m.has404, false)
     assert.deepEqual(m.components, [])
   } finally { rmSync(dir, { recursive: true, force: true }) }

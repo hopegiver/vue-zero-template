@@ -27,6 +27,7 @@ vue-zero 기반 앱의 레퍼런스 템플릿. 페이지, 컴포넌트, 레이�
 ```
 vue-zero-template/
 ├── wrangler.toml
+├── bin/                      # scan.js(자동 등록) / doctor.js(정적 검사) / hook-scan.js
 ├── server/                   # 백엔드 (Nuxt 동일 구조)
 │   ├── index.js              # 안정 파일 — 수정 불필요
 │   ├── _registry.js          # scan 자동 생성 — 편집 금지
@@ -50,6 +51,8 @@ vue-zero-template/
 wrangler dev     # 로컬 개발 (http://localhost:8004)
 wrangler deploy  # 프로덕션 배포
 npm run scan     # pages.json, components.json, _registry.js 갱신
+npm run doctor   # .vue 정적 검사 (규칙 위반 시 file:line CODE + hint 출력, 없으면 무출력)
+npm run test:unit # doctor 단위 테스트 (node --test)
 npm test         # Playwright E2E (정기 회귀 테스트)
 ```
 
@@ -68,7 +71,73 @@ npm test         # Playwright E2E (정기 회귀 테스트)
 `.vue` 또는 `server/api/*.js` 파일을 추가/삭제하면 `npm run scan` 실행.
 Claude Code 사용 시 hook이 자동 실행하므로 수동 실행 불필요.
 
-### 규칙 2 — Options API만, scoped 금지
+### 규칙 1-1 — doctor: 편집 직후 정적 피드백
+
+`.vue`를 Write/Edit하면 hook이 scan 후 `bin/doctor.js`를 실행해, 위반이 있으면 **exit 2 + stderr**(`file:line CODE 메시지` + `hint:`)로 돌려준다. 피드백이 오면 hint대로 즉시 고친다. 전체 점검은 `npm run doctor`. 경고(`W_`)는 출력만 하고 막지 않는다.
+
+| 코드 | 의미 |
+|------|------|
+| `E_SCRIPT_SETUP` / `E_SCRIPT_TS` | `<script setup>` / `lang="ts"` 사용 |
+| `W_STYLE_SCOPED` | `<style scoped>` 사용 |
+| `E_RELATIVE_IMPORT` / `E_BARE_IMPORT` | script 안 `import`/`export … from` (상대/베어) |
+| `E_NO_EXPORT_DEFAULT` | `<script>`에 `export default` 없음 |
+| `E_COMPOSABLES_DIR` | `composables/` 디렉터리 존재 |
+| `E_RESERVED_TAG` | `components/` 파일명이 HTML 표준 태그(`Button.vue` 등) |
+| `E_LOGIN_PAGE_PROTECTED` | auth 활성인데 loginPage/404/error에 `auth: false` 없음 |
+
+doctor는 오탐이 없는 규칙만 검사한다(미등록 태그, 템플릿 표현식 등은 검사하지 않음).
+
+### 자주 어기는 규칙 (증상 → 원인 → 수정)
+
+| 증상 | 원인 | 수정 |
+|------|------|------|
+| 컴포넌트가 빈 화면 / 로드 실패 | `<script setup>`·`lang="ts"`·`export default` 누락 | Options API + `export default {}` |
+| `import` 줄에서 SyntaxError | `.vue`는 Blob URL로 실행되어 모듈 import 불가 | 전역 `utils.js` 함수 또는 `<script>` 전역 사용 |
+| 태그를 컴포넌트로 못 씀 / 네이티브 요소로 렌더 | 파일명이 `Button` 등 HTML 태그와 동일 | `AppButton`처럼 접두사 |
+| 로그인 페이지 무한 리다이렉트 | auth 활성인데 `auth: false` 없음 | 해당 페이지에 `auth: false` |
+| 새 페이지/컴포넌트가 안 뜸 | scan 미실행 | `npm run scan` |
+| 같은 페이지에서 `/users/1`→`/users/2`로 가도 데이터 그대로 | `mounted`에서만 조회 (컴포넌트 재사용) | 아래 `watch` 규칙 |
+| 배포 후에도 옛 화면 | 브라우저/CDN의 HTTP 캐시 | 아래 HTTP 캐시 |
+| 콘솔 경고가 안 보임 | prod 빌드 로드 | localhost는 자동 dev 빌드. 다른 호스트는 `?vzdev` 추가 |
+
+### 규칙 1-2 — 파라미터가 바뀌면 `watch`로 재조회
+
+같은 페이지 컴포넌트는 라우트 파라미터·쿼리만 바뀌면 **재생성되지 않아** `mounted`가 다시 실행되지 않는다. 라우트 의존 데이터는 `watch`로 다시 불러온다.
+
+```js
+export default {
+  data() { return { user: null, error: null } },
+  watch: {
+    '$route.params.id': { immediate: true, handler() { this.load() } }, // immediate로 mounted 대체
+  },
+  methods: {
+    async load() {
+      const { data, error } = await useApi('/api/users/' + this.$route.params.id)
+      this.error = error; this.user = error ? null : data.user
+    },
+  },
+}
+```
+
+### 규칙 1-3 — 전역 상태는 `Vue.reactive`
+
+여러 페이지가 공유하는 상태(현재 사용자 등)는 `assets/js/utils.js`에 `Vue.reactive` 객체로 둔다(함수 선언은 그 자체로 전역).
+
+```js
+// utils.js
+const appState = Vue.reactive({ user: null })
+window.appState = appState   // const는 window 등록 필요
+function resetAppState() { appState.user = null }
+```
+
+`.vue`에서는 `data() { return { state: appState } }`로 노출하면 반응형으로 갱신된다.
+**로그아웃·토큰 만료 시** `localStorage.removeItem('token')`과 함께 `resetAppState()`로 전역 상태를 반드시 비운다(남아 있으면 다음 로그인 사용자에게 이전 데이터가 보임). 사용자별 목록 등 페이지 로컬 데이터는 페이지 이동 시 컴포넌트가 새로 만들어지므로 자동 초기화된다.
+
+### HTTP 캐시와 배포
+
+정적 파일은 브라우저·CDN에 캐시된다. 배포 후 갱신이 안 보이면 하드 리로드로 확인하고, 운영 중에는 파일 URL에 버전 쿼리(`vue-zero.js?v=1.3.1`)를 붙이거나 `Cache-Control`을 조정한다.
+
+### 규칙 2 — Options API만, scoped 금지 (doctor가 검사)
 
 `<script setup>`, TypeScript, Composition API 사용 금지. `<style scoped>` 금지 — 클래스명으로 구분.
 
@@ -236,6 +305,6 @@ router.get('/me', authMiddleware, (c) => {
 
 | 라이브러리 | CDN |
 |-----------|-----|
-| Vue 3 | unpkg.com/vue@3/dist/vue.global.prod.js |
-| Vue Router 4 | unpkg.com/vue-router@4/dist/vue-router.global.prod.js |
+| Vue 3 | unpkg.com/vue@3/dist/vue.global(.prod).js — `index.html`이 localhost/`?vzdev`는 dev, 그 외 prod 선택 |
+| Vue Router 4 | unpkg.com/vue-router@4/dist/vue-router.global(.prod).js — 위와 동일 |
 | vue-zero | unpkg.com/vue-zero-ai/dist/vue-zero.js |

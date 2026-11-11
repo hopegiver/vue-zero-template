@@ -7,6 +7,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "scan": "node bin/scan.js",
+    "doctor": "node bin/doctor.js",
+    "test:unit": "node --test bin/doctor.test.js",
     "test": "npx playwright test"
   },
   "devDependencies": {

@@ -6,8 +6,16 @@
   <title>vue-zero example</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="/assets/css/base.css" rel="stylesheet">
-  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-  <script src="https://unpkg.com/vue-router@4/dist/vue-router.global.prod.js"></script>
+  <!-- localhost 또는 ?vzdev → dev 빌드(상세한 경고/에러), 그 외 → prod 빌드.
+       document.write는 파서를 막고 순서대로 실행되므로 아래 vue-zero.js보다 항상 먼저 로드된다. -->
+  <script>
+    (function () {
+      var dev = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || /[?&]vzdev\b/.test(location.search)
+      var sfx = dev ? '' : '.prod'
+      document.write('<script src="https://unpkg.com/vue@3/dist/vue.global' + sfx + '.js"><\/script>')
+      document.write('<script src="https://unpkg.com/vue-router@4/dist/vue-router.global' + sfx + '.js"><\/script>')
+    })()
+  </script>
   <script src="/assets/js/vue-zero.js"></script>
   <script src="/assets/js/utils.js"></script>
   <!-- <script src="https://unpkg.com/vue-zero-ai/dist/vue-zero.js"></script> -->
